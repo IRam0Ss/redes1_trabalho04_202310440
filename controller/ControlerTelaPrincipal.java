@@ -52,6 +52,9 @@ public class ControlerTelaPrincipal {
   private ChoiceBox<String> opcaoControleErro;
 
   @FXML
+  private ChoiceBox<String> opcaoControleFluxo;
+
+  @FXML
   private Canvas quadroAnimacaoTransmissao;
 
   private GraphicsContext gc; // o "pincel" que vai gerar o desenho para simular a transmissao
@@ -61,8 +64,8 @@ public class ControlerTelaPrincipal {
   private ControleRede controleRede; // o controlador da rede
 
   /**
-   * classe interna para representar cada quadro na animacao
-   * para organizar a sequencia de quadros a serem animados
+   * classe interna para representar cada quadro na animacao para organizar a
+   * sequencia de quadros a serem animados
    */
   private class QuadroAnimacao {
     int[] fluxoBits;
@@ -87,19 +90,24 @@ public class ControlerTelaPrincipal {
 
     // adiciona as opcoes de enquadramento e inicializa como padrao a contagem de
     // caracteres
-    opcaoEnquadramento.getItems().addAll("Contagem de Caracteres", "Insercao de Bytes",
-        "Insercao de Bits", "Violacao da Camada Fisica");
+    opcaoEnquadramento.getItems().addAll("Contagem de Caracteres", "Insercao de Bytes", "Insercao de Bits",
+        "Violacao da Camada Fisica");
     opcaoEnquadramento.setValue("Contagem de Caracteres");
 
     // adiciona as opcoes de controle de erro e inicializa como padrao
-    opcaoControleErro.getItems().addAll("Bit de Paridade Par", "Bit de Paridade Impar",
-        "CRC-32 (IEEE 802)", "Codigo de Hamming");
+    opcaoControleErro.getItems().addAll("Bit de Paridade Par", "Bit de Paridade Impar", "CRC-32 (IEEE 802)",
+        "Codigo de Hamming");
     opcaoControleErro.setValue("Bit de Paridade Par");
 
     // adiciona as opcoes de taxa de erro e inicializa como padrao 0%
     opcaoTaxaErro.getItems().addAll("0%", "1%", "5%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%",
         "100%");
     opcaoTaxaErro.setValue("0%");
+
+    // adiciona as opcoes de controle de fluxo e inicializa como padrao
+    opcaoControleFluxo.getItems().addAll("Janela Deslizante de 1 Bit", "Janela Deslizante Go-Back-N",
+        "Janela Deslizante com Retransmissao Seletiva");
+    opcaoControleFluxo.setValue("Janela Deslizante de 1 Bit");
 
     gc = quadroAnimacaoTransmissao.getGraphicsContext2D(); // "assossia" o nosso "pincel" a tela onde a animacao vai
                                                            // surgir
@@ -111,8 +119,7 @@ public class ControlerTelaPrincipal {
   /**
    * metodo que inicia a simulacoa ao pressinor de um botao
    * 
-   * @param pressionarBotaoTransmitir condicao de disparada do metodo,
-   *                                  pressionar
+   * @param pressionarBotaoTransmitir condicao de disparada do metodo, pressionar
    *                                  o botao transmitir!
    * @throws ErroDeVerificacaoException trata erros de violacao de canais
    */
@@ -309,18 +316,18 @@ public class ControlerTelaPrincipal {
     int opcaoSelecionada = 3;
 
     switch (opcaoChoiceBox) {
-      case "Binario":
-        opcaoSelecionada = 0;
-        break;
-      case "Manchester":
-        opcaoSelecionada = 1;
-        break;
-      case "Manchester Diferencial":
-        opcaoSelecionada = 2;
-        break;
-      default:
-        System.out.println("Problemas no metodo opcaoSelecionada do ControlerTelaPrincipal");
-        break;
+    case "Binario":
+      opcaoSelecionada = 0;
+      break;
+    case "Manchester":
+      opcaoSelecionada = 1;
+      break;
+    case "Manchester Diferencial":
+      opcaoSelecionada = 2;
+      break;
+    default:
+      System.out.println("Problemas no metodo opcaoSelecionada do ControlerTelaPrincipal");
+      break;
     }
 
     return opcaoSelecionada;
@@ -338,21 +345,21 @@ public class ControlerTelaPrincipal {
     int opcaoSelecionada = 0;
 
     switch (opcaoChoiceBox) {
-      case "Contagem de Caracteres":
-        opcaoSelecionada = 0;
-        break;
-      case "Insercao de Bytes":
-        opcaoSelecionada = 1;
-        break;
-      case "Insercao de Bits":
-        opcaoSelecionada = 2;
-        break;
-      case "Violacao da Camada Fisica":
-        opcaoSelecionada = 3;
-        break;
-      default:
-        System.out.println("Problemas no metodo opcaoEnquadramentoSelecionada do ControlerTelaPrincipal");
-        break;
+    case "Contagem de Caracteres":
+      opcaoSelecionada = 0;
+      break;
+    case "Insercao de Bytes":
+      opcaoSelecionada = 1;
+      break;
+    case "Insercao de Bits":
+      opcaoSelecionada = 2;
+      break;
+    case "Violacao da Camada Fisica":
+      opcaoSelecionada = 3;
+      break;
+    default:
+      System.out.println("Problemas no metodo opcaoEnquadramentoSelecionada do ControlerTelaPrincipal");
+      break;
     }
 
     return opcaoSelecionada;
@@ -370,21 +377,50 @@ public class ControlerTelaPrincipal {
     int opcaoSelecionada = 0;
 
     switch (opcaoChoiceBox) {
-      case "Bit de Paridade Par":
-        opcaoSelecionada = 0;
-        break;
-      case "Bit de Paridade Impar":
-        opcaoSelecionada = 1;
-        break;
-      case "CRC-32 (IEEE 802)":
-        opcaoSelecionada = 2;
-        break;
-      case "Codigo de Hamming":
-        opcaoSelecionada = 3;
-        break;
-      default:
-        System.out.println("Problemas no metodo opcaoControleErroSelecionada do ControlerTelaPrincipal");
-        break;
+    case "Bit de Paridade Par":
+      opcaoSelecionada = 0;
+      break;
+    case "Bit de Paridade Impar":
+      opcaoSelecionada = 1;
+      break;
+    case "CRC-32 (IEEE 802)":
+      opcaoSelecionada = 2;
+      break;
+    case "Codigo de Hamming":
+      opcaoSelecionada = 3;
+      break;
+    default:
+      System.out.println("Problemas no metodo opcaoControleErroSelecionada do ControlerTelaPrincipal");
+      break;
+    }
+
+    return opcaoSelecionada;
+  }// fim do metodo
+
+  /**
+   * metodo responsavel por detectar qual opcao de controle de fluxo esta sendo
+   * selecionada na choice box e a "converter" para um inteiro.
+   * 
+   * @return um inteiro equivalente a opcao selecionada
+   */
+  public int opcaoControleFluxoSelecionada() {
+    String opcaoChoiceBox = opcaoControleFluxo.getValue();
+
+    int opcaoSelecionada = 0;
+
+    switch (opcaoChoiceBox) {
+    case "Janela Deslizante de 1 Bit":
+      opcaoSelecionada = 0;
+      break;
+    case "Janela Deslizante Go-Back-N":
+      opcaoSelecionada = 1;
+      break;
+    case "Janela Deslizante com Retransmissao Seletiva":
+      opcaoSelecionada = 2;
+      break;
+    default:
+      System.out.println("Problemas no metodo opcaoControleFluxoSelecionada do ControlerTelaPrincipal");
+      break;
     }
 
     return opcaoSelecionada;
@@ -421,8 +457,8 @@ public class ControlerTelaPrincipal {
   }// fim metodo
 
   /**
-   * exibe na caixa reservada a forma binaria da mensagem enviada
-   * * @param binarioMensagem recebe o array de int com a informacao em binario
+   * exibe na caixa reservada a forma binaria da mensagem enviada * @param
+   * binarioMensagem recebe o array de int com a informacao em binario
    */
   public void exibirRepresentMensagemBinariaTransmitida(int[] binarioMensagem) {
 
@@ -433,8 +469,8 @@ public class ControlerTelaPrincipal {
   }// fim metodo
 
   /**
-   * exibe na caixa reservada a forma binaria da mensagem recebida
-   * * @param binarioMensagem recebe o array de int com a informacao em binario
+   * exibe na caixa reservada a forma binaria da mensagem recebida * @param
+   * binarioMensagem recebe o array de int com a informacao em binario
    */
   public void exibirRepresentMensagemBinariaRecebida(int[] binarioMensagem) {
 
@@ -448,8 +484,7 @@ public class ControlerTelaPrincipal {
    * exibe na caixa de texto reservada a representacao de como o sinal pos
    * codificacao eh enviado
    * 
-   * @param representSinal array com a mensagem codificada que representa o
-   *                       sinal
+   * @param representSinal array com a mensagem codificada que representa o sinal
    */
   public void exibirRepresentSinalTransmitido(int[] representSinal) {
 
@@ -463,8 +498,7 @@ public class ControlerTelaPrincipal {
    * exibe na caixa de texto reservada a representacao de como o sinal pos
    * codificacao eh recebido
    * 
-   * @param representSinal array com a mensagem codificada que representa o
-   *                       sinal
+   * @param representSinal array com a mensagem codificada que representa o sinal
    */
   public void exibirRepresentSinalRecebido(int[] representSinal) {
     Platform.runLater(() -> {

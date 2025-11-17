@@ -32,7 +32,7 @@ public class CamadaAplicacaoTransmissora {
    * 
    * @param mensagem mensagem tranmitida
    */
-  public void transmitirMensagem(String mensagem) throws ErroDeVerificacaoException{
+  public void transmitirMensagem(String mensagem) throws ErroDeVerificacaoException {
     int[] quadro = ManipulacaoBits.stringParaIntAgrupado(mensagem); // converte a mensagem para array de int
     Platform.runLater(() -> {
       this.controlerTelaPrincipal.exibirRepresentMensagemBinariaTransmitida(quadro);

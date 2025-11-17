@@ -8,9 +8,9 @@ import util.ErroDeVerificacaoException;
 import util.ManipulacaoBits;
 
 /**
- * classe responsavel por simular a funcao da Camada Fissica Transmissora
- * pega a mensagem que veio da camada anterior (em binario) e codifica de acordo
- * com a opcao selecionada pelo usuario
+ * classe responsavel por simular a funcao da Camada Fissica Transmissora pega a
+ * mensagem que veio da camada anterior (em binario) e codifica de acordo com a
+ * opcao selecionada pelo usuario
  */
 public class CamadaFisicaTransmissora {
 
@@ -73,15 +73,15 @@ public class CamadaFisicaTransmissora {
 
     } else { // se nao faz o normal
       switch (tipoDeCodificacao) {
-        case 0: // codificao binaria
-          fluxoBrutoDeBits = CamadaFisicaTransmissoraCodificacaoBinaria(quadro);
-          break;
-        case 1: // codificacao manchester
-          fluxoBrutoDeBits = CamadaFisicaTransmissoraCodificacaoManchester(quadro);
-          break;
-        case 2: // codificacao manchester diferencial
-          fluxoBrutoDeBits = CamadaFisicaTransmissoraCodificacaoManchesterDiferencial(quadro);
-          break;
+      case 0: // codificao binaria
+        fluxoBrutoDeBits = CamadaFisicaTransmissoraCodificacaoBinaria(quadro);
+        break;
+      case 1: // codificacao manchester
+        fluxoBrutoDeBits = CamadaFisicaTransmissoraCodificacaoManchester(quadro);
+        break;
+      case 2: // codificacao manchester diferencial
+        fluxoBrutoDeBits = CamadaFisicaTransmissoraCodificacaoManchesterDiferencial(quadro);
+        break;
       }// fim do switch/case
     }
     final int[] fluxoBrutoBitsExibir = fluxoBrutoDeBits;
@@ -96,10 +96,8 @@ public class CamadaFisicaTransmissora {
   /**
    * aplica a codificacao binaria na mensagem a ser transmitida
    * 
-   * @param quadro traduzida em bits agrupados no array de
-   *               inteiros, cada inteiro possui ate 32 bits (4
-   *               char) da
-   *               mensagem
+   * @param quadro traduzida em bits agrupados no array de inteiros, cada inteiro
+   *               possui ate 32 bits (4 char) da mensagem
    * @return como o sinal em binario eh uma traducao direta da mensagem em bits,
    *         retorna a propria
    */
@@ -108,13 +106,11 @@ public class CamadaFisicaTransmissora {
   }// fim do metodo
 
   /**
-   * aplica a codificacao de manchester na mensagem a ser transmitida
-   * bit 1 -> 10
+   * aplica a codificacao de manchester na mensagem a ser transmitida bit 1 -> 10
    * bit 0 -> 01
    * 
-   * @param quadro string traduzida em bits agrupados no array de
-   *               inteiros, cada inteiro possui ate 32 bits (4 char) da
-   *               mensagem
+   * @param quadro string traduzida em bits agrupados no array de inteiros, cada
+   *               inteiro possui ate 32 bits (4 char) da mensagem
    * @return retorna no array como sera o sinal transmitido em manchester
    */
   public int[] CamadaFisicaTransmissoraCodificacaoManchester(int[] quadro) {
@@ -173,13 +169,11 @@ public class CamadaFisicaTransmissora {
   }// fim do metodo
 
   /**
-   * aplica a codificacao de manchester na mensagem a ser transmitida
-   * 0 -> transicao
-   * 1 -> sem transicao
+   * aplica a codificacao de manchester na mensagem a ser transmitida 0 ->
+   * transicao 1 -> sem transicao
    * 
-   * @param quadro string traduzida em bits agrupados no array de
-   *               inteiros, cada inteiro possui ate 32 bits (4 char) da
-   *               mensagem
+   * @param quadro string traduzida em bits agrupados no array de inteiros, cada
+   *               inteiro possui ate 32 bits (4 char) da mensagem
    * @return retorna no array como sera o sinal transmitido em
    *         manchesterdiferencial
    */
@@ -234,8 +228,8 @@ public class CamadaFisicaTransmissora {
   }// fim do metodo
 
   /**
-   * Codifica o quadro de dados e o enquadra com sinais de violacao (11)
-   * no inicio e no fim.
+   * Codifica o quadro de dados e o enquadra com sinais de violacao (11) no inicio
+   * e no fim.
    * 
    * @param quadro            O quadro de dados PURO vindo da camada de enlace.
    * @param tipoDeCodificacao A codificacao a ser usada (Manchester, etc.).

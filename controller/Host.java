@@ -62,7 +62,7 @@ public class Host {
 				controlerTelaPrincipal);
 		this.aplicacaoTransmissora = new AplicacaoTransmissora(this.camadaAplicacaoTransmissora);
 
-		// conexao para que a camada fisica saiba quem eh a superior 
+		// conexao para que a camada fisica saiba quem eh a superior
 		this.camadaFisicaTransmissora.setCamadaEnlaceSuperior(this.camadaEnlaceDadosTransmissora);
 
 		// conexoes virtuais para que as camdas irmas se conhecam, saibam onde o ACK tem
@@ -92,7 +92,7 @@ public class Host {
 	 * 
 	 * @param mensagem mensagem a ser enviada
 	 */
-	public void enviarMensagem(String mensagem) throws ErroDeVerificacaoException{
+	public void enviarMensagem(String mensagem) throws ErroDeVerificacaoException {
 		System.out.println(nome + ": Iniciando transmissão de DADOS.");
 		this.aplicacaoTransmissora.iniciarTransmissao(mensagem);
 	}// fim enviarMensagem

@@ -24,7 +24,7 @@ public class AplicacaoTransmissora {
    * 
    * @param mensagem mensagem a ser transmitida
    */
-  public void iniciarTransmissao(String mensagem) throws ErroDeVerificacaoException{
+  public void iniciarTransmissao(String mensagem) throws ErroDeVerificacaoException {
 
     if (!mensagem.isEmpty() && mensagem != null) {
       this.camadaAplicacaoTransmissora.transmitirMensagem(mensagem); // envia a mensagem para a proxima camada

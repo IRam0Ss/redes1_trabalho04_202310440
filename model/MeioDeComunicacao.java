@@ -7,8 +7,8 @@ import util.ManipulacaoBits;
 import java.util.Random;
 
 /**
- * Simula a transmissao de forma otimizada em uma unica passada,
- * aplicando o erro de um bit por quadro e exibindo o resultado em um Alert.
+ * Simula a transmissao de forma otimizada em uma unica passada, aplicando o
+ * erro de um bit por quadro e exibindo o resultado em um Alert.
  */
 public class MeioDeComunicacao {
 
@@ -34,10 +34,8 @@ public class MeioDeComunicacao {
    * @param fisicaReceptoraHostB    referencia a camada fisica do hostB
    * @param controlerTelaPrincipal  referencia ao controle da UI
    */
-  public MeioDeComunicacao(CamadaFisicaTransmissora fisicaTransmissoraHostA,
-      CamadaFisicaReceptora fisicaReceptoraHostA,
-      CamadaFisicaTransmissora fisicaTransmissoraHostB,
-      CamadaFisicaReceptora fisicaReceptoraHostB,
+  public MeioDeComunicacao(CamadaFisicaTransmissora fisicaTransmissoraHostA, CamadaFisicaReceptora fisicaReceptoraHostA,
+      CamadaFisicaTransmissora fisicaTransmissoraHostB, CamadaFisicaReceptora fisicaReceptoraHostB,
       ControlerTelaPrincipal controlerTelaPrincipal) {
 
     // cria as instancias
@@ -60,12 +58,12 @@ public class MeioDeComunicacao {
   /**
    * metodo principal que simula a transmissao da mensagem
    * 
-   * @param fluxoBrutoDeBits fluxoBruto de bits que represneta o sinal
-   *                         codificado
+   * @param fluxoBrutoDeBits fluxoBruto de bits que represneta o sinal codificado
    *                         pela camada anterior
    * @param remetente        que mandou a mensagem
    */
-  public void transmitirMensagem(int fluxoBrutoDeBits[], CamadaFisicaTransmissora remetente)  throws ErroDeVerificacaoException{
+  public void transmitirMensagem(int fluxoBrutoDeBits[], CamadaFisicaTransmissora remetente)
+      throws ErroDeVerificacaoException {
 
     // transferir bits e aplicar erro
 
@@ -92,21 +90,21 @@ public class MeioDeComunicacao {
     // O TX comeca com um subquadro de 32 bits (1 int).
     int tamanhoPosEnquadramento;
     switch (tipoDeEnquadramento) {
-      case 0: // Contagem de Caracteres (32 bits de dados + 8 bits de cabecalho)
-        tamanhoPosEnquadramento = 40;
-        break;
-      case 1: // Insercao de Bytes e Bits (vamos assumir que 32 bits + 8 da flag de inicio + 8
-              // da
-              // flag de fim = 48 bits com flags)
-      case 2:
-        tamanhoPosEnquadramento = 48;
-        break;
-      case 3: // Violacao da Camada Fisica (passa o subquadro direto)
-        tamanhoPosEnquadramento = 40; // O subquadro original tem 32 bits.
-        break;
-      default:
-        tamanhoPosEnquadramento = totalDeBits;
-        break;
+    case 0: // Contagem de Caracteres (32 bits de dados + 8 bits de cabecalho)
+      tamanhoPosEnquadramento = 40;
+      break;
+    case 1: // Insercao de Bytes e Bits (vamos assumir que 32 bits + 8 da flag de inicio + 8
+            // da
+            // flag de fim = 48 bits com flags)
+    case 2:
+      tamanhoPosEnquadramento = 48;
+      break;
+    case 3: // Violacao da Camada Fisica (passa o subquadro direto)
+      tamanhoPosEnquadramento = 40; // O subquadro original tem 32 bits.
+      break;
+    default:
+      tamanhoPosEnquadramento = totalDeBits;
+      break;
     } // fim switch
 
     // CALCULA O TAMANHO APOS O CONTROLE DE ERRO (sobre o tamanho anterior)
@@ -114,25 +112,25 @@ public class MeioDeComunicacao {
     // Se nao tiver dados, nao faz nada
     if (tamanhoPosEnquadramento > 0) {
       switch (tipoDeControleDeErro) {
-        case 0: // Paridade Par
-        case 1: // Paridade Impar
-          // O TX (BitParidadePar) faz: (totalBits + 1) e alinha para o proximo byte
-          int bits = tamanhoPosEnquadramento + 1;
-          tamanhoPosControleDeErro = (bits + 7) / 8 * 8; // Replica a logica de alinhamento do TX
-          break;
-        case 2: // CRC
-          // O TX (CRC) adiciona 32 bits
-          tamanhoPosControleDeErro = tamanhoPosEnquadramento + 32;
-          break;
-        case 3: // Hamming
-          // O TX (Hamming) adiciona 'r' bits de paridade
-          int quantBitsParidade = 0;
-          while ((1 << quantBitsParidade) < (tamanhoPosEnquadramento + quantBitsParidade + 1)) {
-            quantBitsParidade++;
-          }
-          tamanhoPosControleDeErro = tamanhoPosEnquadramento + quantBitsParidade;
-          tamanhoPosControleDeErro = (tamanhoPosControleDeErro + 7) / 8 * 8;
-          break;
+      case 0: // Paridade Par
+      case 1: // Paridade Impar
+        // O TX (BitParidadePar) faz: (totalBits + 1) e alinha para o proximo byte
+        int bits = tamanhoPosEnquadramento + 1;
+        tamanhoPosControleDeErro = (bits + 7) / 8 * 8; // Replica a logica de alinhamento do TX
+        break;
+      case 2: // CRC
+        // O TX (CRC) adiciona 32 bits
+        tamanhoPosControleDeErro = tamanhoPosEnquadramento + 32;
+        break;
+      case 3: // Hamming
+        // O TX (Hamming) adiciona 'r' bits de paridade
+        int quantBitsParidade = 0;
+        while ((1 << quantBitsParidade) < (tamanhoPosEnquadramento + quantBitsParidade + 1)) {
+          quantBitsParidade++;
+        }
+        tamanhoPosControleDeErro = tamanhoPosEnquadramento + quantBitsParidade;
+        tamanhoPosControleDeErro = (tamanhoPosControleDeErro + 7) / 8 * 8;
+        break;
       } // fim switch controle de erro
     } // fim if
 

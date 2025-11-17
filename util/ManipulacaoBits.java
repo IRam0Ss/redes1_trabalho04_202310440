@@ -7,8 +7,8 @@ package util;
 public class ManipulacaoBits {
 
   /**
-   * converte uma String de qualquer tamanho em um array de inteiros (int[]),
-   * onde cada inteiro armazena 32 bits da mensagem de forma agrupada.
+   * converte uma String de qualquer tamanho em um array de inteiros (int[]), onde
+   * cada inteiro armazena 32 bits da mensagem de forma agrupada.
    * 
    * @param mensagem A String a ser convertida.
    * @return Um array de int[] com os bits da mensagem agrupados.

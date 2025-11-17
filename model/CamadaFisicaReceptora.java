@@ -59,15 +59,15 @@ public class CamadaFisicaReceptora {
         fluxoBrutoDeBits = CamadaFisicaReceptoraDecodificacaoComViolacao(quadro, tipoDeDecodificacao);
       } else {
         switch (tipoDeDecodificacao) {
-          case 0: // codificao binaria
-            fluxoBrutoDeBits = CamadaFisicaReceptoraDecodificacaoBinaria(quadro);
-            break;
-          case 1: // codificacao manchester
-            fluxoBrutoDeBits = CamadaFisicaReceptoraDecodificacaoManchester(quadro);
-            break;
-          case 2: // codificacao manchester diferencial
-            fluxoBrutoDeBits = CamadaFisicaReceptoraDecodificacaoManchesterDiferencial(quadro);
-            break;
+        case 0: // codificao binaria
+          fluxoBrutoDeBits = CamadaFisicaReceptoraDecodificacaoBinaria(quadro);
+          break;
+        case 1: // codificacao manchester
+          fluxoBrutoDeBits = CamadaFisicaReceptoraDecodificacaoManchester(quadro);
+          break;
+        case 2: // codificacao manchester diferencial
+          fluxoBrutoDeBits = CamadaFisicaReceptoraDecodificacaoManchesterDiferencial(quadro);
+          break;
         }// fim do switch/case
       } // fim if/else
     } catch (ErroDeVerificacaoException e) {
@@ -84,7 +84,7 @@ public class CamadaFisicaReceptora {
       });
       return; // Descarta o quadro, nao envia para a camada de Enlace
     }
-    
+
     // chama proxima camada
     this.camadaEnlaceDadosReceptora.receberQuadro(fluxoBrutoDeBits);
   }// fim do metodo CamadaFisicaTransmissora
@@ -100,9 +100,7 @@ public class CamadaFisicaReceptora {
   } // fim do metodo
 
   /**
-   * decodifica o codigo manchester
-   * 10 -> 1
-   * 01 -> 0
+   * decodifica o codigo manchester 10 -> 1 01 -> 0
    * 
    * @param quadro array com bits codificados em manchester
    * @return array decodificado
@@ -137,9 +135,9 @@ public class CamadaFisicaReceptora {
         // Par invalido (00 ou 11) detectado! Isso e um erro de codificacao fisica.
         String parInvalido = "" + bit1 + bit2;
         throw new ErroDeVerificacaoException("ERRO NA CAMADA FISICA (MANCHESTER)",
-            "Erro de decodificacao Manchester: O par de bits [" + parInvalido + "] e invalido.\n" +
-                "Esperava-se '01' ou '10'.\n\n" +
-                "Isto indica que um erro de 1 bit no canal corrompeu o sinal. O quadro sera descartado.");
+            "Erro de decodificacao Manchester: O par de bits [" + parInvalido + "] e invalido.\n"
+                + "Esperava-se '01' ou '10'.\n\n"
+                + "Isto indica que um erro de 1 bit no canal corrompeu o sinal. O quadro sera descartado.");
       }
 
       int posicaoGlobalOriginal = i / 2; // mapea a posicao do fluxo manchester de volta na posicao original
@@ -151,11 +149,9 @@ public class CamadaFisicaReceptora {
   }// fim do metodo
 
   /**
-   * decodifica o manchester diferencial
-   * primeiro bit eh o padrao, ja os proximos bits sao traduzidos a partir da
-   * existencia de transicao e a nao existencia
-   * sem transicao -> 1
-   * com transicao -> 0
+   * decodifica o manchester diferencial primeiro bit eh o padrao, ja os proximos
+   * bits sao traduzidos a partir da existencia de transicao e a nao existencia
+   * sem transicao -> 1 com transicao -> 0
    * 
    * @param quadro o bacote de bits codificado em manchester diferencial
    * @return o pacote de inteiros decodificado, com a informacao da mensagem em
@@ -212,8 +208,8 @@ public class CamadaFisicaReceptora {
   }// fim do metodo
 
   /**
-   * Encontra os marcadores de violacao (11), decodifica os dados entre eles
-   * e entrega o quadro limpo.
+   * Encontra os marcadores de violacao (11), decodifica os dados entre eles e
+   * entrega o quadro limpo.
    * 
    * @param quadro              O sinal bruto vindo do meio fisico.
    * @param tipoDeDecodificacao A decodificacao a ser utilizada.
@@ -276,8 +272,7 @@ public class CamadaFisicaReceptora {
           String parInvalido = "" + bit1 + bit2;
           throw new ErroDeVerificacaoException("ERRO NA CAMADA FISICA (MANCHESTER)",
               "Erro de decodificacao Manchester: O par de bits [" + parInvalido
-                  + "] e invalido (detectado dentro do quadro de violacao).\n" +
-                  "O quadro sera descartado.");
+                  + "] e invalido (detectado dentro do quadro de violacao).\n" + "O quadro sera descartado.");
         } // fim if/else
 
       } else { // Manchester Diferencial
@@ -304,8 +299,8 @@ public class CamadaFisicaReceptora {
 
   } // fim metodo CamadaFisicaReceptoraDecodificacaoComViolacao
 
-  public MeioDeComunicacao getMeio(){
+  public MeioDeComunicacao getMeio() {
     return this.meioDeComunicacao;
   }
-  
+
 }// fim da classe

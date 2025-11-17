@@ -5,25 +5,25 @@ package util;
  * exibidos na UI
  */
 public class ErroDeVerificacaoException extends Exception {
-    private String titulo; // o header do alert
+  private String titulo; // o header do alert
 
-    /**
-     * construtor
-     * 
-     * @param titulo   o header do alerta
-     * @param mensagem a explicacao do erro
-     */
-    public ErroDeVerificacaoException(String titulo, String mensagem) {
-        super(mensagem); // mensagem padrao
-        this.titulo = titulo;
+  /**
+   * construtor
+   * 
+   * @param titulo   o header do alerta
+   * @param mensagem a explicacao do erro
+   */
+  public ErroDeVerificacaoException(String titulo, String mensagem) {
+    super(mensagem); // mensagem padrao
+    this.titulo = titulo;
 
-    } // fim construtor
+  } // fim construtor
 
-    public String getTitulo() {
-        return titulo;
-    }
+  public String getTitulo() {
+    return titulo;
+  }
 
-    public String getMensagem() {
-        return getMessage();
-    }
-}// fim da classe 
+  public String getMensagem() {
+    return getMessage();
+  }
+}// fim da classe

@@ -1,8 +1,9 @@
+
 /* ***************************************************************
 * Autor............: Iury Ramos Sodre 
 * Matricula........: 202310440
-* Inicio...........: 22/09/2025
-* Ultima alteracao.: 02/11/2025
+* Inicio...........: 15/11/2025
+* Ultima alteracao.: 20/11/2025
 * Nome.............: E.D.E.N. (sistema de simulacao de transmicao de sinais)
 * Funcao...........: simula a transmissao de sinais que acontece numa rede.
 *************************************************************** */
@@ -51,11 +52,9 @@ public class Principal extends Application {
 
     primaryStage.setTitle("E.D.E.N."); // define o titulo do projeto
 
-    
-    //Pra setar um icone, mas eh detalhe opcional
-    Image icone = new Image("./img/logoEDEN.png"); //define a imagem que sera o
-    primaryStage.getIcons().add(icone); //adiciona o icone ao stage
-    
+    // Pra setar um icone, mas eh detalhe opcional
+    Image icone = new Image("./img/logoEDEN.png"); // define a imagem que sera o
+    primaryStage.getIcons().add(icone); // adiciona o icone ao stage
 
     primaryStage.setResizable(false); // impete que tamanho da tela seja alterado
 

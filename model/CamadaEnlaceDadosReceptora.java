@@ -57,7 +57,7 @@ public class CamadaEnlaceDadosReceptora {
    * 
    * @param quadro quadro recebido da camada fisica com enquadramento e controle
    *               de erro incluidos
-   * @throws ErroDeVerificacaoException trata os erros 
+   * @throws ErroDeVerificacaoException trata os erros
    */
   public void receberQuadro(int[] quadro) throws ErroDeVerificacaoException {
 
@@ -102,18 +102,18 @@ public class CamadaEnlaceDadosReceptora {
     int tipoDeEnquadramento = this.controlerTelaPrincipal.opcaoEnquadramentoSelecionada();
     int[] quadroDesenquadrado = quadro;
     switch (tipoDeEnquadramento) {
-      case 0: // contagem de caracteres
-        quadroDesenquadrado = CamadaEnlaceDadosReceptoraEnquadramentoContagemDeCaracteres(quadro);
-        break;
-      case 1: // insercao de bytes
-        quadroDesenquadrado = CamadaEnlaceDadosReceptoraEnquadramentoInsercaoDeBytes(quadro);
-        break;
-      case 2: // insercao de bits
-        quadroDesenquadrado = CamadaEnlaceDadosReceptoraEnquadramentoInsercaoDeBits(quadro);
-        break;
-      case 3: // violacao da camada fisica
-        quadroDesenquadrado = CamadaEnlaceDadosReceptoraEnquadramentoViolacaoDaCamadaFisica(quadro);
-        break;
+    case 0: // contagem de caracteres
+      quadroDesenquadrado = CamadaEnlaceDadosReceptoraEnquadramentoContagemDeCaracteres(quadro);
+      break;
+    case 1: // insercao de bytes
+      quadroDesenquadrado = CamadaEnlaceDadosReceptoraEnquadramentoInsercaoDeBytes(quadro);
+      break;
+    case 2: // insercao de bits
+      quadroDesenquadrado = CamadaEnlaceDadosReceptoraEnquadramentoInsercaoDeBits(quadro);
+      break;
+    case 3: // violacao da camada fisica
+      quadroDesenquadrado = CamadaEnlaceDadosReceptoraEnquadramentoViolacaoDaCamadaFisica(quadro);
+      break;
     }// fim do switch/case
 
     return quadroDesenquadrado; // retorna o quadro ja desenquadrado
@@ -131,18 +131,18 @@ public class CamadaEnlaceDadosReceptora {
     int tipoDeControleDeErro = this.controlerTelaPrincipal.opcaoControleErroSelecionada();
     int[] quadroVerificado = null;
     switch (tipoDeControleDeErro) {
-      case 0: // paridade par
-        quadroVerificado = CamadaEnlaceDadosReceptoraControleDeErroBitDeParidadePar(quadro);
-        break;
-      case 1: // paridade impar
-        quadroVerificado = CamadaEnlaceDadosReceptoraControleDeErroBitDeParidadeImpar(quadro);
-        break;
-      case 2: // CRC
-        quadroVerificado = CamadaEnlaceDadosReceptoraControleDeErroCRC(quadro);
-        break;
-      case 3: // hamming
-        quadroVerificado = CamadaEnlaceDadosReceptoraControleDeErroCodigoDeHamming(quadro);
-        break;
+    case 0: // paridade par
+      quadroVerificado = CamadaEnlaceDadosReceptoraControleDeErroBitDeParidadePar(quadro);
+      break;
+    case 1: // paridade impar
+      quadroVerificado = CamadaEnlaceDadosReceptoraControleDeErroBitDeParidadeImpar(quadro);
+      break;
+    case 2: // CRC
+      quadroVerificado = CamadaEnlaceDadosReceptoraControleDeErroCRC(quadro);
+      break;
+    case 3: // hamming
+      quadroVerificado = CamadaEnlaceDadosReceptoraControleDeErroCodigoDeHamming(quadro);
+      break;
     }// fim do switch/case
     return quadroVerificado;
   }// fim do metodo CamadaEnlaceDadosReceptoraControleDeErro
@@ -154,6 +154,31 @@ public class CamadaEnlaceDadosReceptora {
    * @param quadro quadro recebido que ta tendo o fluxo controlad
    */
   public void CamadaEnlaceDadosReceptoraControleDeFluxo(int quadro[]) throws ErroDeVerificacaoException {
+
+    int tipoDeControleFluxo = this.controlerTelaPrincipal.opcaoControleFluxoSelecionada();
+    switch (tipoDeControleFluxo) {
+    case 0: // janela deslizante de 1 bit
+      CamadaEnlaceDadosReceptoraJanelaDeslizanteUmBit(quadro);
+      break;
+    case 1: // janela deslizante go-back-n
+      CamadaEnlaceDadosReceptoraJanelaDeslizanteGoBackN(quadro);
+      break;
+    case 2: // janela deslizante com retransmissão seletiva
+      CamadaEnlaceDadosReceptoraJanelaDeslizanteComRetransmissaoSeletiva(quadro);
+      break;
+    default:
+      break;
+    } // fim do swich case
+
+  }// fim do metodo CamadaEnlaceDadosReceptoraControleDeFluxo
+
+  /**
+   * Armazena minha logica do stop and wait, sera reutilizada futuramente
+   * 
+   * @param quadro
+   * @throws ErroDeVerificacaoException
+   */
+  public void fluxoStopWait(int[] quadro) throws ErroDeVerificacaoException {
     // converte mensagem quadro para String para verificar se eh um ACK ou nao, caso
     // nao seja um ACK entao eh uma mensagem que ta sendo enviada pra B
     String payload = ManipulacaoBits.intAgrupadoParaString(quadro);
@@ -185,7 +210,7 @@ public class CamadaEnlaceDadosReceptora {
       } // fimif
 
     } // fim if/else
-  }// fim do metodo CamadaEnlaceDadosReceptoraControleDeFluxo
+  }
 
   /**
    * metodo para desenquadrar o quadro utilizando o metodo de contagem de
@@ -599,8 +624,8 @@ public class CamadaEnlaceDadosReceptora {
 
     if (crcRecebido != crcCalculado) { // se os crcs forem diferentes ocorreu erro
       String msgErro = String.format(
-          "Erro de CRC-32!\n\nCRC Recebido: 0x%X\nCRC Calculado: 0x%X\n\nO quadro foi descartado.",
-          crcRecebido, crcCalculado);
+          "Erro de CRC-32!\n\nCRC Recebido: 0x%X\nCRC Calculado: 0x%X\n\nO quadro foi descartado.", crcRecebido,
+          crcCalculado);
       System.out.println(msgErro);
 
       throw new ErroDeVerificacaoException("FALHA DE CRC (CHECKSUM)", msgErro);
@@ -692,9 +717,22 @@ public class CamadaEnlaceDadosReceptora {
           break;
         }
       }
-    }// fim for 
+    } // fim for
 
     return quadroVerificado;
   }// fim do metodo CamadaEnlaceDadosReceptoraControleDeErroCodigoDeHamming
+
+  public void CamadaEnlaceDadosReceptoraJanelaDeslizanteUmBit(int quadro[]) throws ErroDeVerificacaoException {
+
+    fluxoStopWait(quadro);
+  }// fim do metodo CamadaEnlaceDadosReceptoraJanelaDeslizanteUmBit
+
+  public void CamadaEnlaceDadosReceptoraJanelaDeslizanteGoBackN(int quadro[]) {
+
+  } // fim do metodo CamadaEnlaceDadosReceptoraJanelaDeslizanteGoBackN
+
+  public void CamadaEnlaceDadosReceptoraJanelaDeslizanteComRetransmissaoSeletiva(int quadro[]) {
+
+  }// fim do metodo
 
 }// fim da classe CamadaEnlaceDadosReceptora

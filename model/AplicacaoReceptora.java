@@ -21,8 +21,8 @@ public class AplicacaoReceptora {
   }// fim do construtor
 
   /**
-   * metodo responsavel por receber a mensagem convertida para string e
-   * exibi-la na interface grafica
+   * metodo responsavel por receber a mensagem convertida para string e exibi-la
+   * na interface grafica
    * 
    * @param mensagem mensagem que chegou ao receptor
    */

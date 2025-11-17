@@ -31,7 +31,7 @@ public class CamadaAplicacaoReceptora {
     this.controlerTelaPrincipal.exibirRepresentMensagemBinariaRecebida(quadro); // mostra o binario na tela
 
     String mensagem = ManipulacaoBits.intAgrupadoParaString(quadro); // converte o array de int
-                                                                                           // para string
+                                                                     // para string
     this.aplicacaoReceptora.receberMensagem(mensagem);
   } // fim do metodo receberQuadro
 

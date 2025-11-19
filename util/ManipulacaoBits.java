@@ -5,6 +5,18 @@ package util;
  * que foram utilizados
  */
 public class ManipulacaoBits {
+  /**
+   * Monta um quadro de ACK com o número de sequência.
+   * 
+   * @param seqAck Número de sequência do ACK
+   * @return int[] representando o quadro ACK
+   */
+  public static int[] montarQuadroAck(int seqAck) {
+    // ACK não tem dados, só cabeçalho com número de sequência
+    int[] quadroAck = new int[1];
+    quadroAck[0] = seqAck;
+    return quadroAck;
+  }
 
   /**
    * converte uma String de qualquer tamanho em um array de inteiros (int[]), onde
@@ -286,4 +298,39 @@ public class ManipulacaoBits {
     return (byteOndeOcorreu + 1) * 8;
   } // fim do metodo descobrirTotalDeBitsReais
 
-}// fim da classe
+  /**
+   * Anexa um cabeçalho de 32 bits (1 inteiro) a um quadro de dados, onde o
+   * cabeçalho contém o número de sequência.
+   * 
+   * @param quadroDados  O array de inteiros representando o quadro de dados.
+   * @param numSequencia O número de sequência a ser anexado no cabeçalho.
+   * @return Um novo array de inteiros com o cabeçalho anexado.
+   */
+  public static int[] anexarCabecalho(int[] quadroDados, int numSequencia) {
+    // novo array com 1 inteiro a mais para o cabecalho
+    int[] quadroComCabecalho = new int[quadroDados.length + 1];
+    // define o primeiro inteiro para o numero de sequencia, os 32 primeiros bits
+    quadroComCabecalho[0] = numSequencia;
+
+    // copia os dados do quadro original para o novo array, a partir do indice 1
+    System.arraycopy(quadroDados, 0, quadroComCabecalho, 1, quadroDados.length);
+
+    return quadroComCabecalho;
+  }
+
+  public static int[] removerCabecalho(int[] quadroComCabecalho) {
+    // novo array com 1 inteiro a menos, removendo o cabecalho
+    int[] quadroSemCabecalho = new int[quadroComCabecalho.length - 1];
+
+    // copia os dados do quadro original para o novo array, a partir do indice 1
+    System.arraycopy(quadroComCabecalho, 1, quadroSemCabecalho, 0, quadroSemCabecalho.length);
+
+    return quadroSemCabecalho;
+  }// fim do metodo removerCabecalho
+
+  public static int lerNumeroDeSequencia(int[] quadroComCabecalho) {
+    // o numero de sequencia esta armazenado no primeiro inteiro do array
+    return quadroComCabecalho[0];
+  }// fim do metodo lerNumeroDeSequencia
+
+} // fim da classe ManipulacaoBits

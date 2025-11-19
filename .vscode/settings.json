@@ -1,8 +1,17 @@
 {
-  "java.format.settings.url": ".vscode/java-formatter.xml",
-  "[java]": {
-    "editor.tabSize": 2
-  },
-  "java.project.sourcePaths": ["."],
-  "java.project.referencedLibraries": []
+    "java.format.settings.url": ".vscode/java-formatter.xml",
+    "[java]": {
+        "editor.tabSize": 2
+    },
+    "java.project.sourcePaths": ["."],
+    "java.project.referencedLibraries": ["lib/**/*.jar"],
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.jdt.ls.java.home": "C:\\Program Files\\Java\\zulu8.88.0.19-ca-fx-jdk8.0.462-win_x64",
+    "java.configuration.runtimes": [
+        {
+            "name": "JavaSE-1.8",
+            "path": "C:\\Program Files\\Java\\zulu8.88.0.19-ca-fx-jdk8.0.462-win_x64",
+            "default": true
+        }
+    ]
 }

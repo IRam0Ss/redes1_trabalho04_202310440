@@ -75,8 +75,6 @@ public class MeioDeComunicacao {
     // array partida
 
     int totalDeBits = ManipulacaoBits.descobrirTotalDeBitsReais(fluxoBrutoDeBitsPontoInicial);
-    int tipoDeEnquadramento = this.controlerTelaPrincipal.opcaoEnquadramentoSelecionada();
-    int tipoDeControleDeErro = this.controlerTelaPrincipal.opcaoControleErroSelecionada();
     int tipoDeCodificacao = this.controlerTelaPrincipal.opcaoSelecionada();
 
     // um strigBuider pra construir o relatorio de erro (debug)
@@ -85,57 +83,10 @@ public class MeioDeComunicacao {
         .append(" por quadro.\n");
     relatorio.append("Iniciando transferência otimizada de ").append(totalDeBits).append(" bits...\n\n");
 
-    // supor o tamanho dos quadros fisicos, baseado na codificacao feita
-    // CALCULA O TAMANHO APOS O ENQUADRAMENTO (Baseado no seu TX)
-    // O TX comeca com um subquadro de 32 bits (1 int).
-    int tamanhoPosEnquadramento;
-    switch (tipoDeEnquadramento) {
-    case 0: // Contagem de Caracteres (32 bits de dados + 8 bits de cabecalho)
-      tamanhoPosEnquadramento = 40;
-      break;
-    case 1: // Insercao de Bytes e Bits (vamos assumir que 32 bits + 8 da flag de inicio + 8
-            // da
-            // flag de fim = 48 bits com flags)
-    case 2:
-      tamanhoPosEnquadramento = 48;
-      break;
-    case 3: // Violacao da Camada Fisica (passa o subquadro direto)
-      tamanhoPosEnquadramento = 40; // O subquadro original tem 32 bits.
-      break;
-    default:
-      tamanhoPosEnquadramento = totalDeBits;
-      break;
-    } // fim switch
+    // Isso garante que aplica-se APENAS 1 ERRO POR QUADRO
+    int tamanhoFisicoDoQuadroEmBits = totalDeBits;
 
-    // CALCULA O TAMANHO APOS O CONTROLE DE ERRO (sobre o tamanho anterior)
-    int tamanhoPosControleDeErro = tamanhoPosEnquadramento;
-    // Se nao tiver dados, nao faz nada
-    if (tamanhoPosEnquadramento > 0) {
-      switch (tipoDeControleDeErro) {
-      case 0: // Paridade Par
-      case 1: // Paridade Impar
-        // O TX (BitParidadePar) faz: (totalBits + 1) e alinha para o proximo byte
-        int bits = tamanhoPosEnquadramento + 1;
-        tamanhoPosControleDeErro = (bits + 7) / 8 * 8; // Replica a logica de alinhamento do TX
-        break;
-      case 2: // CRC
-        // O TX (CRC) adiciona 32 bits
-        tamanhoPosControleDeErro = tamanhoPosEnquadramento + 32;
-        break;
-      case 3: // Hamming
-        // O TX (Hamming) adiciona 'r' bits de paridade
-        int quantBitsParidade = 0;
-        while ((1 << quantBitsParidade) < (tamanhoPosEnquadramento + quantBitsParidade + 1)) {
-          quantBitsParidade++;
-        }
-        tamanhoPosControleDeErro = tamanhoPosEnquadramento + quantBitsParidade;
-        tamanhoPosControleDeErro = (tamanhoPosControleDeErro + 7) / 8 * 8;
-        break;
-      } // fim switch controle de erro
-    } // fim if
-
-    // CALCULA O TAMANHO FISICO FINAL (com codificacao)
-    int tamanhoFisicoDoQuadroEmBits = tamanhoPosControleDeErro;
+    // Se houver codificacao Manchester ou Diferencial, o tamanho dobra
     if (tipoDeCodificacao == 1 || tipoDeCodificacao == 2) { // Manchester/Diferencial
       tamanhoFisicoDoQuadroEmBits *= 2;
     } // fim do if

@@ -90,6 +90,12 @@ public class CamadaEnlaceDadosReceptora {
 
     int[] quadroDesenquadrado = CamadaEnlaceDadosReceptoraEnquadramento(quadroVerificado); // desenquadra o quadro
 
+    // Verifica se o desenquadramento resultou em um quadro vazio
+    if (quadroDesenquadrado == null || quadroDesenquadrado.length == 0) {
+      System.out.println("Camada Enlace Receptora: Quadro desenquadrado está vazio. Descartando.");
+      return; // sai do metodo sem processar o quadro
+    }
+
     int cabecalhoBrutoComMarcador = quadroDesenquadrado[0];
 
     boolean ehAck = (cabecalhoBrutoComMarcador & MASCARA_FLAG_ACK) != 0;
@@ -254,21 +260,13 @@ public class CamadaEnlaceDadosReceptora {
     final int FLAG = 0b01111110; // valor do byte de flag, o mesmo do transmissor
     final int SCAPE = 0b01111101; // valor do byte de escape, o mesmo do transmissor
 
-    // primeiro, contamos o total de bytes validos recebidos
-    int contadorBytesRecebidos = 0;
-    boolean fimDados = false;
-    for (int inteiroAgrupado : quadro) {
-      if (fimDados)
-        break;
-      for (int i = 0; i < 4; i++) {
-        int umByte = (inteiroAgrupado >> (24 - i * 8)) & 0xFF;
-        if (umByte == 0) {
-          fimDados = true;
-          break;
-        } // fim if
-        contadorBytesRecebidos++;
-      } // fim for
-    } // fim do for
+    // Usa descobrirTotalDeBitsReais para saber o tamanho real dos dados
+    int totalBitsReais = ManipulacaoBits.descobrirTotalDeBitsReais(quadro);
+    if (totalBitsReais == 0) {
+      return new int[0];
+    }
+
+    int contadorBytesRecebidos = (totalBitsReais + 7) / 8; // converte bits para bytes, arredondando para cima
 
     // calcular quantos bytes de carga util vao existir apos desenquadramento
     int contadorBytesCargaUtil = 0;
@@ -346,8 +344,14 @@ public class CamadaEnlaceDadosReceptora {
 
     final int FLAG = 0b01111110; // O mesmo valor de flag do transmissor
 
-    int tamanhoMaximoEstimado = quadro.length * 32; // define o valor maximo possivel
-    int[] bufferTemporario = new int[tamanhoMaximoEstimado];
+    // Usa descobrirTotalDeBitsReais para saber o tamanho real dos dados
+    int totalBitsReais = ManipulacaoBits.descobrirTotalDeBitsReais(quadro);
+    if (totalBitsReais == 0) {
+      return new int[0];
+    }
+
+    int tamanhoMaximoEstimado = totalBitsReais;
+    int[] bufferTemporario = new int[(tamanhoMaximoEstimado + 31) / 32];
     int indiceBitDestino = 0;
     int contadorBitsUm = 0;
     boolean inicioQuadro = false;

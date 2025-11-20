@@ -14,11 +14,13 @@ public class CamadaEnlaceDadosReceptora {
 
   // referencias as camadas irmas que o Host precisa, para saber onde interpretar
   // os ACKs
-  private AplicacaoTransmissora aplicacaoTransmissoraIrma;
+  // private AplicacaoTransmissora aplicacaoTransmissoraIrma;
   private CamadaEnlaceDadosTransmissora camadaEnlaceDadosTransmissoraIrma;
 
   // constantes do protocolo
-  private final String ACK_PAYLOAD_STR = "ACK";
+  private int numeroSequenciaEsperado = 0; // numero de sequencia esperado para o proximo quadro
+
+  private final int MASCARA_FLAG_ACK = 1 << 30; // mascara para identificar o bit de flag ACK no numero de sequencia
 
   /**
    * construtor da classe
@@ -49,7 +51,7 @@ public class CamadaEnlaceDadosReceptora {
    *                              aplicacao atual
    */
   public void setAplicacaoTransmissoraIrma(AplicacaoTransmissora aplicacaoTransmissora) {
-    this.aplicacaoTransmissoraIrma = aplicacaoTransmissora;
+    // this.aplicacaoTransmissoraIrma = aplicacaoTransmissora;
   }// fim do setAplicacaoTransmissoraIrma
 
   /**
@@ -88,6 +90,19 @@ public class CamadaEnlaceDadosReceptora {
 
     int[] quadroDesenquadrado = CamadaEnlaceDadosReceptoraEnquadramento(quadroVerificado); // desenquadra o quadro
 
+    int cabecalhoBrutoComMarcador = quadroDesenquadrado[0];
+
+    boolean ehAck = (cabecalhoBrutoComMarcador & MASCARA_FLAG_ACK) != 0;
+
+    if (ehAck) {
+      int seqAck = ManipulacaoBits.lerNumeroDeSequencia(quadroDesenquadrado);
+
+      if (this.camadaEnlaceDadosTransmissoraIrma != null) {
+        this.camadaEnlaceDadosTransmissoraIrma.processarAckDeControle(seqAck);
+      }
+      return; // sai do metodo apos processar o ack
+    }
+    // nao eh flag, eh dado segue normal
     CamadaEnlaceDadosReceptoraControleDeFluxo(quadroDesenquadrado); // controla o fluxo de dados
 
   } // fim do metodo receberQuadro
@@ -102,18 +117,18 @@ public class CamadaEnlaceDadosReceptora {
     int tipoDeEnquadramento = this.controlerTelaPrincipal.opcaoEnquadramentoSelecionada();
     int[] quadroDesenquadrado = quadro;
     switch (tipoDeEnquadramento) {
-    case 0: // contagem de caracteres
-      quadroDesenquadrado = CamadaEnlaceDadosReceptoraEnquadramentoContagemDeCaracteres(quadro);
-      break;
-    case 1: // insercao de bytes
-      quadroDesenquadrado = CamadaEnlaceDadosReceptoraEnquadramentoInsercaoDeBytes(quadro);
-      break;
-    case 2: // insercao de bits
-      quadroDesenquadrado = CamadaEnlaceDadosReceptoraEnquadramentoInsercaoDeBits(quadro);
-      break;
-    case 3: // violacao da camada fisica
-      quadroDesenquadrado = CamadaEnlaceDadosReceptoraEnquadramentoViolacaoDaCamadaFisica(quadro);
-      break;
+      case 0: // contagem de caracteres
+        quadroDesenquadrado = CamadaEnlaceDadosReceptoraEnquadramentoContagemDeCaracteres(quadro);
+        break;
+      case 1: // insercao de bytes
+        quadroDesenquadrado = CamadaEnlaceDadosReceptoraEnquadramentoInsercaoDeBytes(quadro);
+        break;
+      case 2: // insercao de bits
+        quadroDesenquadrado = CamadaEnlaceDadosReceptoraEnquadramentoInsercaoDeBits(quadro);
+        break;
+      case 3: // violacao da camada fisica
+        quadroDesenquadrado = CamadaEnlaceDadosReceptoraEnquadramentoViolacaoDaCamadaFisica(quadro);
+        break;
     }// fim do switch/case
 
     return quadroDesenquadrado; // retorna o quadro ja desenquadrado
@@ -131,18 +146,18 @@ public class CamadaEnlaceDadosReceptora {
     int tipoDeControleDeErro = this.controlerTelaPrincipal.opcaoControleErroSelecionada();
     int[] quadroVerificado = null;
     switch (tipoDeControleDeErro) {
-    case 0: // paridade par
-      quadroVerificado = CamadaEnlaceDadosReceptoraControleDeErroBitDeParidadePar(quadro);
-      break;
-    case 1: // paridade impar
-      quadroVerificado = CamadaEnlaceDadosReceptoraControleDeErroBitDeParidadeImpar(quadro);
-      break;
-    case 2: // CRC
-      quadroVerificado = CamadaEnlaceDadosReceptoraControleDeErroCRC(quadro);
-      break;
-    case 3: // hamming
-      quadroVerificado = CamadaEnlaceDadosReceptoraControleDeErroCodigoDeHamming(quadro);
-      break;
+      case 0: // paridade par
+        quadroVerificado = CamadaEnlaceDadosReceptoraControleDeErroBitDeParidadePar(quadro);
+        break;
+      case 1: // paridade impar
+        quadroVerificado = CamadaEnlaceDadosReceptoraControleDeErroBitDeParidadeImpar(quadro);
+        break;
+      case 2: // CRC
+        quadroVerificado = CamadaEnlaceDadosReceptoraControleDeErroCRC(quadro);
+        break;
+      case 3: // hamming
+        quadroVerificado = CamadaEnlaceDadosReceptoraControleDeErroCodigoDeHamming(quadro);
+        break;
     }// fim do switch/case
     return quadroVerificado;
   }// fim do metodo CamadaEnlaceDadosReceptoraControleDeErro
@@ -157,60 +172,20 @@ public class CamadaEnlaceDadosReceptora {
 
     int tipoDeControleFluxo = this.controlerTelaPrincipal.opcaoControleFluxoSelecionada();
     switch (tipoDeControleFluxo) {
-    case 0: // janela deslizante de 1 bit
-      CamadaEnlaceDadosReceptoraJanelaDeslizanteUmBit(quadro);
-      break;
-    case 1: // janela deslizante go-back-n
-      CamadaEnlaceDadosReceptoraJanelaDeslizanteGoBackN(quadro);
-      break;
-    case 2: // janela deslizante com retransmissão seletiva
-      CamadaEnlaceDadosReceptoraJanelaDeslizanteComRetransmissaoSeletiva(quadro);
-      break;
-    default:
-      break;
+      case 0: // janela deslizante de 1 bit
+        CamadaEnlaceDadosReceptoraJanelaDeslizanteUmBit(quadro);
+        break;
+      case 1: // janela deslizante go-back-n
+        CamadaEnlaceDadosReceptoraJanelaDeslizanteGoBackN(quadro);
+        break;
+      case 2: // janela deslizante com retransmissão seletiva
+        CamadaEnlaceDadosReceptoraJanelaDeslizanteComRetransmissaoSeletiva(quadro);
+        break;
+      default:
+        break;
     } // fim do swich case
 
   }// fim do metodo CamadaEnlaceDadosReceptoraControleDeFluxo
-
-  /**
-   * Armazena minha logica do stop and wait, sera reutilizada futuramente
-   * 
-   * @param quadro
-   * @throws ErroDeVerificacaoException
-   */
-  public void fluxoStopWait(int[] quadro) throws ErroDeVerificacaoException {
-    // converte mensagem quadro para String para verificar se eh um ACK ou nao, caso
-    // nao seja um ACK entao eh uma mensagem que ta sendo enviada pra B
-    String payload = ManipulacaoBits.intAgrupadoParaString(quadro);
-    if (payload.equals(ACK_PAYLOAD_STR)) {
-      // eh um ACK
-      System.out.println("CAMADA ENLACE RECEPTORA - ACK recebido");
-
-      // notifica a camada transmissora irma, para ela saber que tem um ACK chegando
-      // para ela
-      if (this.camadaEnlaceDadosTransmissoraIrma != null) {
-        // verificacao de seguranca
-        this.camadaEnlaceDadosTransmissoraIrma.receberAck();
-      } // fim if
-
-    } else {
-      // se nao eh ACK eh quadro
-      System.out.println("CAMADA ENLACE RECEPTORA: Dados validos recebidos passando para aplicacao");
-
-      if (this.camadaAplicacaoReceptora != null) {
-        // envia o quadro pra proxima camada
-        this.camadaAplicacaoReceptora.receberQuadro(quadro);
-      } // fim do if
-
-      // como dados foram recebidos e estao validos, envia o ack para a transmissora
-      System.out.println("CAMADA ENLACE RECEPTORA: Enviando ACK de volta...");
-      if (this.aplicacaoTransmissoraIrma != null) {
-        // Usa a pilha de transmissão irma, para enviar o ACK pelo mesmo caminho
-        this.aplicacaoTransmissoraIrma.iniciarTransmissao(ACK_PAYLOAD_STR);
-      } // fimif
-
-    } // fim if/else
-  }
 
   /**
    * metodo para desenquadrar o quadro utilizando o metodo de contagem de
@@ -722,10 +697,58 @@ public class CamadaEnlaceDadosReceptora {
     return quadroVerificado;
   }// fim do metodo CamadaEnlaceDadosReceptoraControleDeErroCodigoDeHamming
 
+  /**
+   * metodo responsavel por controlar o fluxo com uma janela deslizante de bit
+   * unico
+   * 
+   * @param quadro informacao recebida
+   * @throws ErroDeVerificacaoException trata erros
+   */
   public void CamadaEnlaceDadosReceptoraJanelaDeslizanteUmBit(int quadro[]) throws ErroDeVerificacaoException {
 
-    fluxoStopWait(quadro);
+    // foi verificado e desenquadrado, mas ainda apresenta anexado ao dados o
+    // numSequencia
+    int seqRecebido = ManipulacaoBits.lerNumeroDeSequencia(quadro); // pega o numero de sequencia
+    int[] cargaUtil = ManipulacaoBits.removerCabecalho(quadro); // extrai a carga util do quadro
+
+    System.out.println("RX: Recebido Quadro Seq: " + seqRecebido + " | Esperado: " + numeroSequenciaEsperado);
+
+    // logica do stop and wait:
+    if (seqRecebido == numeroSequenciaEsperado) {
+      System.out.println("RX: Quadro correto aceito");
+
+      // envia os dados de carga util para a proxima camada
+      if (this.camadaAplicacaoReceptora != null) {
+        this.camadaAplicacaoReceptora.receberQuadro(cargaUtil);
+      } // fim if
+
+      // atualiza o numero de sequencia esperado
+      numeroSequenciaEsperado = (numeroSequenciaEsperado + 1) % 2; // janela deslizante de 1 bit so usa 0 e 1
+    } else {
+      System.out.println("RX: Quadro duplicado/fora de ordem. Descartando dados.");
+    }
+
+    // envia o ACK para o transmissor
+    enviarAckNumerico(seqRecebido);
+
   }// fim do metodo CamadaEnlaceDadosReceptoraJanelaDeslizanteUmBit
+
+  private void enviarAckNumerico(int numeroSequenciaAck) {
+    // cria o quadro de ACK
+    int[] quadroAck = ManipulacaoBits.montarQuadroAck(numeroSequenciaAck);
+
+    System.out.println("RX: Enviando ACK " + numeroSequenciaAck);
+
+    // envia o quadro de ACK para a camada de enlace transmissora irma
+    if (this.camadaEnlaceDadosTransmissoraIrma != null) {
+      try {
+        this.camadaEnlaceDadosTransmissoraIrma.transmitirACK(quadroAck);
+      } catch (ErroDeVerificacaoException e) {
+        // ACKs nao devem gerar erros, mas se ocorrer, apenas loga
+        System.out.println("ERRO AO ENVIAR ACK: " + e.getTitulo() + " - " + e.getMensagem());
+      } // fim try-catch
+    } // fim if
+  }// fim do metodo enviarAckNumerico
 
   public void CamadaEnlaceDadosReceptoraJanelaDeslizanteGoBackN(int quadro[]) {
 

@@ -7,6 +7,7 @@ import java.util.TimerTask;
 
 import controller.ControlerTelaPrincipal;
 import util.ErroDeVerificacaoException;
+import util.JanelaDeslizante;
 import util.ManipulacaoBits;
 
 /**
@@ -32,6 +33,10 @@ public class CamadaEnlaceDadosTransmissora {
   // timer
   private Timer timer;
 
+  // controle fluxo
+  private JanelaDeslizante janelaDeslizante;
+  private final int MASCARA_FLAG_ACK = 1 << 30; // mascara para identificar o bit de flag ACK no numero de sequencia
+
   /**
    * construtor da classe
    * 
@@ -42,6 +47,15 @@ public class CamadaEnlaceDadosTransmissora {
       ControlerTelaPrincipal controlerTelaPrincipal) {
     this.camadaFisicaTransmissora = camadaFisicaTransmissora;
     this.controlerTelaPrincipal = controlerTelaPrincipal;
+
+    switch (this.controlerTelaPrincipal.opcaoControleFluxoSelecionada()) {
+      case 0:// janela deslizante de 1 bit
+        this.janelaDeslizante = new JanelaDeslizante(1, 1);
+        break;
+      default:
+        break;
+    }
+
   } // fim contrutor
 
   /**
@@ -52,37 +66,26 @@ public class CamadaEnlaceDadosTransmissora {
    */
   public void transmitirQuadro(int[] quadro) throws ErroDeVerificacaoException {
 
+    System.out.println("Enlace TX: Recebi dados. Fragmentando...");
+
     // debug
     System.out.println("Camada de Enlace TX: Recebi " + quadro.length + " inteiros para transmitir.");
 
-    // limpa a fila de transmissao anteriores e cancela os timers. Se clicar 2 vezes
-    // em transmitir pra resetar tudo
-    cancelarTimer();
-    filaDeEnvio.clear();
-    estado = "PRONTO_PARA_ENVIAR";
-
-    // trata cada int ou seja cada 32 bits de carga util como sendo um subquadro
+    // subdivide a mensagem em quadros de 32 bits
     for (int i = 0; i < quadro.length; i++) {
-
-      // verifica se o 'int' contem dados validos antes de processar
       int totalBitsNoInt = ManipulacaoBits.descobrirTotalDeBitsReais(new int[] { quadro[i] });
-      if (totalBitsNoInt == 0) {
-        continue; // pular 'ints' de padding (vazios)
-      } // fim if
+      if (totalBitsNoInt == 0)
+        continue;
 
-      int[] subQuadro = new int[] { quadro[i] }; // o subquadro eh de 1 int ou seja, ate 32 bits de carga util
+      int[] subQuadro = new int[] { quadro[i] }; // Carga util pura (32 bits)
 
-      // debug
-      System.out.println("Enlace TX: Processando sub-quadro " + i);
+      // Adiciona na fila DESTA classe (filaDeEnvio)
+      filaDeEnvio.add(subQuadro);
+    }
 
-      // aplica enquadramento no subquadro.
-      int[] quadroEnquadrado = CamadaEnlaceDadosTransmissoraEnquadramento(subQuadro);
-      // aplica controle de erro
-      int[] quadroComControleDeErro = CamadaEnlaceDadosTransmissoraControleDeErro(quadroEnquadrado);
-      // aplica controle de fluxo
-      CamadaEnlaceDadosTransmissoraControleDeFluxo(quadroComControleDeErro);
-
-    } // fim for
+    // 2. Chama o controle de fluxo para tentar enviar o que estiver na fila
+    CamadaEnlaceDadosTransmissoraControleDeFluxo(null);
+    // Passamos null pois agora a fila é interna, nao processamos um quadro isolado
 
   }// fim e transmitirQuadro
 
@@ -119,18 +122,18 @@ public class CamadaEnlaceDadosTransmissora {
     int tipoDeEnquadramento = this.controlerTelaPrincipal.opcaoEnquadramentoSelecionada();
     int quadroEnquadrado[] = null;
     switch (tipoDeEnquadramento) {
-    case 0: // contagem de caracteres
-      quadroEnquadrado = CamadaEnlaceDadosTransmissoraEnquadramentoContagemDeCaracteres(quadro);
-      break;
-    case 1: // insercao de bytes
-      quadroEnquadrado = CamadaEnlaceDadosTransmissoraEnquadramentoInsercaoDeBytes(quadro);
-      break;
-    case 2: // insercao de bits
-      quadroEnquadrado = CamadaEnlaceDadosTransmissoraEnquadramentoInsercaoDeBits(quadro);
-      break;
-    case 3: // violacao da camada fisica
-      quadroEnquadrado = CamadaEnlaceDadosTransmissoraEnquadramentoViolacaoDaCamadaFisica(quadro);
-      break;
+      case 0: // contagem de caracteres
+        quadroEnquadrado = CamadaEnlaceDadosTransmissoraEnquadramentoContagemDeCaracteres(quadro);
+        break;
+      case 1: // insercao de bytes
+        quadroEnquadrado = CamadaEnlaceDadosTransmissoraEnquadramentoInsercaoDeBytes(quadro);
+        break;
+      case 2: // insercao de bits
+        quadroEnquadrado = CamadaEnlaceDadosTransmissoraEnquadramentoInsercaoDeBits(quadro);
+        break;
+      case 3: // violacao da camada fisica
+        quadroEnquadrado = CamadaEnlaceDadosTransmissoraEnquadramentoViolacaoDaCamadaFisica(quadro);
+        break;
     }// fim do switch/case
 
     return quadroEnquadrado; // retorna o quadro ja enquadrado
@@ -148,18 +151,18 @@ public class CamadaEnlaceDadosTransmissora {
     int tipoDeControleDeErro = this.controlerTelaPrincipal.opcaoControleErroSelecionada();
     int quadroComControleDeErro[] = null;
     switch (tipoDeControleDeErro) {
-    case 0: // paridade par
-      quadroComControleDeErro = CamadaEnlaceDadosTransmissoraControleDeErroBitParidadePar(quadro);
-      break;
-    case 1: // paridade impar
-      quadroComControleDeErro = CamadaEnlaceDadosTransmissoraControleDeErroBitParidadeImpar(quadro);
-      break;
-    case 2: // CRC
-      quadroComControleDeErro = CamadaEnlaceDadosTransmissoraControleDeErroCRC(quadro);
-      break;
-    case 3: // Hamming
-      quadroComControleDeErro = CamadaEnlaceDadosTransmissoraControleDeErroCodigoDeHamming(quadro);
-      break;
+      case 0: // paridade par
+        quadroComControleDeErro = CamadaEnlaceDadosTransmissoraControleDeErroBitParidadePar(quadro);
+        break;
+      case 1: // paridade impar
+        quadroComControleDeErro = CamadaEnlaceDadosTransmissoraControleDeErroBitParidadeImpar(quadro);
+        break;
+      case 2: // CRC
+        quadroComControleDeErro = CamadaEnlaceDadosTransmissoraControleDeErroCRC(quadro);
+        break;
+      case 3: // Hamming
+        quadroComControleDeErro = CamadaEnlaceDadosTransmissoraControleDeErroCodigoDeHamming(quadro);
+        break;
     }// fim do switch/case
 
     return quadroComControleDeErro; // retorna o quadro ja com controle de erro aplicado
@@ -176,42 +179,20 @@ public class CamadaEnlaceDadosTransmissora {
     int tipoDeControleFluxo = this.controlerTelaPrincipal.opcaoControleFluxoSelecionada();
 
     switch (tipoDeControleFluxo) {
-    case 0: // janela deslizante de 1 bit
-      CamadaEnlaceDadosTransmissoraJanelaDeslizanteUmBit(quadro);
-      break;
-    case 1: // janela deslizante go-back-n
-      CamadaEnlaceDadosTransmissoraJanelaDeslizanteGoBackN(quadro);
-      break;
-    case 2: // janela deslizante com retransmissão seletiva
-      CamadaEnlaceDadosTransmissoraJanelaDeslizanteComRetransmissaoSeletiva(quadro);
-      break;
-    default:
-      break;
+      case 0: // janela deslizante de 1 bit
+        CamadaEnlaceDadosTransmissoraJanelaDeslizanteUmBit(quadro);
+        break;
+      case 1: // janela deslizante go-back-n
+        CamadaEnlaceDadosTransmissoraJanelaDeslizanteGoBackN(quadro);
+        break;
+      case 2: // janela deslizante com retransmissão seletiva
+        CamadaEnlaceDadosTransmissoraJanelaDeslizanteComRetransmissaoSeletiva(quadro);
+        break;
+      default:
+        break;
     }
 
   }// fim do metodo CamadaEnlaceDadosTransmissoraControleDeFluxo
-
-  /**
-   * metodo que funciona como a logica basica do Stop and Wait, analisa a fila e
-   * envia os quadros em ordem Chamado pelo controle de Fluxo
-   */
-  private synchronized void fluxoStopWait() throws ErroDeVerificacaoException {
-
-    if (estado.equals("PRONTO_PARA_ENVIAR") && !filaDeEnvio.isEmpty()) {
-      // se tem quadros a serem enviados e a camada do transmissor ta pronta para
-      // enviar quadros
-      this.quadroEmEspera = filaDeEnvio.poll(); // pega o primeiro da fila
-      this.estado = "ESPERANDO_ACK"; // muda o estado do transmissor para esperar o ACK
-
-      System.out.println("CAMADA DE ENLACE TX: Enviando o proximo da fila ... ");
-      this.camadaFisicaTransmissora.transmitirQuadro(quadroEmEspera); // envia o quadro
-      iniciarTimer();
-    } else if (estado.equals("PRONTO_PARA_ENVIAR") && filaDeEnvio.isEmpty()) {
-      // se a fila ta vazia e ta pronto pra enviar, a transmissao acabou
-      System.out.println("ENLACE TX: Fila de envio vazia. Transmissão concluída.");
-    } // fim else/if
-
-  } // fim metodo fluxoStopWait
 
   /**
    * metodo responsavel por inicializar um timer, start numa thread que espera o
@@ -248,13 +229,17 @@ public class CamadaEnlaceDadosTransmissora {
    * reinicia um novo timer
    */
   private synchronized void tratarTimeOut() throws ErroDeVerificacaoException {
-    if (!estado.equals("ESPERANDO_ACK")) {
-      return; // se nao esta esperando o ACK entao nao faz nada, seguranca
-    } // fim if
+    // verifica base da janela
+    int base = janelaDeslizante.getBase();
 
-    System.out.println("ENLACE TRANSMISSORA: TIMEOUT!! tempo de espera pelo ack acabou, reenviuando quadro ... ");
-    this.camadaFisicaTransmissora.transmitirQuadro(this.quadroEmEspera);
-    iniciarTimer(); // recomeca o timer
+    // pega o quadro salvo no buffer
+    int[] quadroRetransmitir = janelaDeslizante.getQuadro(base);
+
+    if (quadroRetransmitir != null) {
+      System.out.println("TX: Timeout! Retransmitindo sequencia " + base);
+      this.camadaFisicaTransmissora.transmitirQuadro(quadroRetransmitir);
+      iniciarTimer();
+    }
   }// fim metodo
 
   /**
@@ -833,31 +818,34 @@ public class CamadaEnlaceDadosTransmissora {
     return quadroComHamming;
   }// fim do metodo CamadaEnlaceDadosTransmissoraControleDeErroCodigoDeHamming
 
-  /**
-   * metodo que garente que acks recebidos matarao o timer certo para nao entrar
-   * em loop de reenvio constante
-   */
-  public synchronized void receberAck() throws ErroDeVerificacaoException {
-    if (!estado.equals("ESPERANDO_ACK")) {
-      System.out.println("Enlace TX: ACK inesperado recebido. Ignorando.");
-      return;
-    } // fim do if
+  public synchronized void processarAckDeControle(int seqAck) {
 
-    System.out.println("Enlace TX: ACK Válido recebido!");
+    // int seqAck = seqAckFlag & ~MASCARA_FLAG_ACK;
 
-    cancelarTimer(); // finaliza o timer
-    estado = "PRONTO_PARA_ENVIAR";// muda o estado para liberar envio do proximo
-    quadroEmEspera = null; // libera o buffer
+    System.out.println("TX: Estado Janela -> Base: " + janelaDeslizante.getBase() + " | Proximo: "
+        + janelaDeslizante.getProximoNumeroSequencia());
 
-    // chama o controle de fluxo para enviar o proximo quadro na fila (se houver)
-    try {
-      fluxoStopWait();
-    } catch (ErroDeVerificacaoException e) {
-      // nao ha motivo para propagar aqui; log e continua
-      e.printStackTrace();
+    if (seqAck == janelaDeslizante.getBase()) {
+      System.out.println("TX: ACK " + seqAck + " CONFIRMADO! Atualizando janela...");
+
+      // atualizar janela
+      janelaDeslizante.atualizarBase(seqAck);
+
+      cancelarTimer();
+
+      // envia o proximo se tiver
+      try {
+        CamadaEnlaceDadosTransmissoraControleDeFluxo(null);
+      } catch (ErroDeVerificacaoException e) {
+        e.printStackTrace();
+      }
+
+    } else {
+      // nao eh o ack correto
+      System.out.println("TX: ACK " + seqAck + " IGNORADO (Esperava: " + janelaDeslizante.getBase() + ")");
     }
 
-  }// fim do receberAck
+  }
 
   /**
    * metodo responsavel por abortar uma transmissao invalida
@@ -872,9 +860,38 @@ public class CamadaEnlaceDadosTransmissora {
 
   public void CamadaEnlaceDadosTransmissoraJanelaDeslizanteUmBit(int quadro[]) throws ErroDeVerificacaoException {
 
-    filaDeEnvio.add(quadro);
+    if (quadro != null) {
+      // adiciona o quadro na fila de envio caso algum quadro real seja passado, caso
+      // contrario processa os quadros ja da fila
+      filaDeEnvio.add(quadro);
+    }
 
-    fluxoStopWait();
+    // envia quadros enquanto a fila esta com elementos e a janela permite
+    // transmissao
+    while (!filaDeEnvio.isEmpty() && janelaDeslizante.podeEnviar()) {
+      // pega os dados da fila, os subquadros divididos
+      int[] dadosSemCabecalho = filaDeEnvio.poll();
+      // pega o proximo numero de sequencia
+      int sequencia = janelaDeslizante.getProximoNumeroSequencia();
+
+      System.out.println("TX: Processando sequencia " + sequencia);
+
+      // adiciona o cabecalho
+      int[] quadroComCabecalho = ManipulacaoBits.anexarCabecalho(dadosSemCabecalho, sequencia);
+
+      // aplica enquadramento e controle de erro
+      int[] quadroEnquadrado = CamadaEnlaceDadosTransmissoraEnquadramento(quadroComCabecalho);
+      int[] quadroComControleDeErro = CamadaEnlaceDadosTransmissoraControleDeErro(quadroEnquadrado);
+
+      // salva buffer na janela deslizante para caso de reenvio
+      janelaDeslizante.adicionarNoBuffer(sequencia, quadroComControleDeErro);
+
+      // transmite
+      this.camadaFisicaTransmissora.transmitirQuadro(quadroComControleDeErro);
+      iniciarTimer();
+
+      janelaDeslizante.avancarSequencia();
+    } // fim do while
 
   } // fim da janela Deslizante de 1 bit
 

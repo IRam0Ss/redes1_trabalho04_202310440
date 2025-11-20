@@ -5,6 +5,9 @@ package util;
  * que foram utilizados
  */
 public class ManipulacaoBits {
+
+  public static final int MASCARA_FLAG_ACK = 1 << 30; // tamanho maximo do pacote em bits
+
   /**
    * Monta um quadro de ACK com o número de sequência.
    * 
@@ -14,7 +17,8 @@ public class ManipulacaoBits {
   public static int[] montarQuadroAck(int seqAck) {
     // ACK não tem dados, só cabeçalho com número de sequência
     int[] quadroAck = new int[1];
-    quadroAck[0] = seqAck;
+    int cabecalhoFinal = MASCARA_FLAG_ACK | (seqAck << 1) | 1; // adiciona marcador de controle
+    quadroAck[0] = cabecalhoFinal;
     return quadroAck;
   }
 
@@ -309,8 +313,11 @@ public class ManipulacaoBits {
   public static int[] anexarCabecalho(int[] quadroDados, int numSequencia) {
     // novo array com 1 inteiro a mais para o cabecalho
     int[] quadroComCabecalho = new int[quadroDados.length + 1];
+
+    int cabecalhoSeguro = (numSequencia << 1) | 1; // adiciona marcador de controle
+
     // define o primeiro inteiro para o numero de sequencia, os 32 primeiros bits
-    quadroComCabecalho[0] = numSequencia;
+    quadroComCabecalho[0] = cabecalhoSeguro;
 
     // copia os dados do quadro original para o novo array, a partir do indice 1
     System.arraycopy(quadroDados, 0, quadroComCabecalho, 1, quadroDados.length);
@@ -329,8 +336,11 @@ public class ManipulacaoBits {
   }// fim do metodo removerCabecalho
 
   public static int lerNumeroDeSequencia(int[] quadroComCabecalho) {
-    // o numero de sequencia esta armazenado no primeiro inteiro do array
-    return quadroComCabecalho[0];
+    int cabecalhoBruto = quadroComCabecalho[0];
+    // remove a flag
+    int semAck = cabecalhoBruto & ~MASCARA_FLAG_ACK;
+    // remove mardador de controle
+    return semAck >> 1;
   }// fim do metodo lerNumeroDeSequencia
 
 } // fim da classe ManipulacaoBits

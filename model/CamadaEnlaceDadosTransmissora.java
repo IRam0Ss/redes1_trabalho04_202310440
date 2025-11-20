@@ -302,25 +302,15 @@ public class CamadaEnlaceDadosTransmissora {
     final int SCAPE = 0b01111101; // valor do byte de escape, equivale a 125 em decimal, em ASCII eh o '}'
     final int TAMANHO_SUBQUADRO_EM_BYTES = 4; // define que a cada quntos bytes sera adicionado uma flag
 
-    int contadorBytesCargaUtilQuadro = 0; // contador de quantos bytes de carga util tem na mensagem
+    // Usa descobrirTotalDeBitsReais para saber o tamanho real dos dados
+    int totalBitsReais = ManipulacaoBits.descobrirTotalDeBitsReais(quadro);
+    if (totalBitsReais == 0) {
+      System.out.println("MENSAGEM VAZIA");
+      return new int[0];
+    }
+
+    int contadorBytesCargaUtilQuadro = (totalBitsReais + 7) / 8; // converte bits para bytes, arredondando para cima
     int contadorBytesEnquadrados = 0; // contador para enquadrar os bits da mensagem
-
-    boolean fimDados = false; // controle se a carga util acabou
-    for (int inteiroAgrupado : quadro) {
-      if (fimDados)
-        break; // se acabou a carga util sai do loop
-
-      for (int i = 0; i < 4; i++) { // percorre os 4 bytes do inteiro e contabiliza os validos
-        int umByte = (inteiroAgrupado >> (24 - i * 8)) & 0xFF; // pega 1 byte do inteiro, comecando do mais a direita
-                                                               // ate o mais a esquerda
-        if (umByte == 0) { // se um byte for 00000000 significa que a acabou as cargas uteis daquele
-                           // inteiro, possivelmente da mensagem
-          fimDados = true;
-          break;
-        } // fim do if
-        contadorBytesCargaUtilQuadro++; // se chegou ate aqui, significa que o byte eh uma carga util.
-      } // fim do for
-    } // fim do for
 
     if (contadorBytesCargaUtilQuadro > 0) { // tem ao menos 1 carga util na mensagem
       contadorBytesEnquadrados = 1; // comeca com a flag inicial
@@ -431,26 +421,14 @@ public class CamadaEnlaceDadosTransmissora {
 
     final int TAMANHO_SUBQUADRO_EM_BYTES = 4; // a cada 32 bits lidos, ou seja 4 bytes, adiciona a flag de divisao
 
-    // calcular o tamanho da carga util do quadro
-    int contadorBytesCargaUtil = 0;
-    boolean fimDados = false;
-    for (int inteiroAgrupado : quadro) {
-      if (fimDados)
-        break;
-      for (int i = 0; i < 4; i++) {
-        int umByte = (inteiroAgrupado >> (24 - i * 8)) & 0xFF;
-        if (umByte == 0) {
-          fimDados = true;
-          break;
-        } // fim if
-        contadorBytesCargaUtil++;
-      } // fim for
-    } // fim for
-
-    if (contadorBytesCargaUtil == 0) {
+    // Usa descobrirTotalDeBitsReais para saber o tamanho real dos dados
+    int totalBitsReais = ManipulacaoBits.descobrirTotalDeBitsReais(quadro);
+    if (totalBitsReais == 0) {
       System.out.println("MENSAGEM VAZIA");
       return new int[0];
-    } // fim if
+    }
+
+    int contadorBytesCargaUtil = (totalBitsReais + 7) / 8; // converte bits para bytes, arredondando para cima
 
     // calcula o total de bits que o quadro enquadrado vai ter
     int contadorBitsEnquadrados = 8; // comeca com 8 bits para as FLAG de inicio

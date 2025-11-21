@@ -754,7 +754,41 @@ public class CamadaEnlaceDadosReceptora {
     } // fim if
   }// fim do metodo enviarAckNumerico
 
-  public void CamadaEnlaceDadosReceptoraJanelaDeslizanteGoBackN(int quadro[]) {
+  public void CamadaEnlaceDadosReceptoraJanelaDeslizanteGoBackN(int quadro[]) throws ErroDeVerificacaoException {
+
+    int seqRecebido = ManipulacaoBits.lerNumeroDeSequencia(quadro);
+    int[] cargaUtil = ManipulacaoBits.removerCabecalho(quadro);
+
+    System.out.println("RX (GBN): Recebido Seq: " + seqRecebido + " | Esperado: " + numeroSequenciaEsperado);
+
+    if (seqRecebido == numeroSequenciaEsperado) {
+      System.out.println("RX (GBN): Quadro na ordem. Aceitando.");
+
+      // Envia para a aplicação
+      if (this.camadaAplicacaoReceptora != null) {
+        this.camadaAplicacaoReceptora.receberQuadro(cargaUtil);
+      }
+
+      // enviar ACK cumulativo (confirma este quadro)
+      enviarAckNumerico(numeroSequenciaEsperado);
+
+      // avanca para o proximo esperado
+      numeroSequenciaEsperado = (numeroSequenciaEsperado + 1) % 8;
+
+    } else {
+      System.out.println("RX (GBN): Fora de ordem! Descartando e re-enviando ACK anterior.");
+
+      // se receber fora de ordem, descarta os dados e reenvia ACK do ultimo correto
+      if (numeroSequenciaEsperado > 0) {
+        // calcula o numero do ultimo quadro recebido corretamente
+        int ultimoCorreto = (numeroSequenciaEsperado - 1 + 8) % 8;
+        System.out.println("RX (GBN): Reenviando ACK " + ultimoCorreto);
+        enviarAckNumerico(ultimoCorreto);
+      } else {
+        // ainda nao recebeu nenhum quadro valido, nao envia ACK
+        System.out.println("RX (GBN): Nenhum quadro valido recebido ainda. Nao envia ACK.");
+      }
+    } // fim if/else
 
   } // fim do metodo CamadaEnlaceDadosReceptoraJanelaDeslizanteGoBackN
 

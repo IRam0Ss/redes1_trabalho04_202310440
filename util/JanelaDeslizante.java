@@ -173,4 +173,8 @@ public class JanelaDeslizante {
     return tamanhoJanela;
   }
 
+  public int getEspacoSequencia() {
+    return espacoSequencia;
+  }
+
 } // fim da classe JanelaDeslizante

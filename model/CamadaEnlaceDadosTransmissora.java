@@ -47,6 +47,9 @@ public class CamadaEnlaceDadosTransmissora {
       case 0:// janela deslizante de 1 bit
         this.janelaDeslizante = new JanelaDeslizante(1, 1);
         break;
+      case 1:// janela deslizante go-back-n
+        this.janelaDeslizante = new JanelaDeslizante(4, 3);
+        break;
       default:
         break;
     }
@@ -224,17 +227,56 @@ public class CamadaEnlaceDadosTransmissora {
    * reinicia um novo timer
    */
   private synchronized void tratarTimeOut() throws ErroDeVerificacaoException {
-    // verifica base da janela
-    int base = janelaDeslizante.getBase();
 
-    // pega o quadro salvo no buffer
-    int[] quadroRetransmitir = janelaDeslizante.getQuadro(base);
+    // verifica qual o protocolo rodando
+    int tipoFluxo = this.controlerTelaPrincipal.opcaoControleFluxoSelecionada();
 
-    if (quadroRetransmitir != null) {
-      System.out.println("TX: Timeout! Retransmitindo sequencia " + base);
-      this.camadaFisicaTransmissora.transmitirQuadro(quadroRetransmitir);
+    if (tipoFluxo == 1) {
+      // go back n
+      int base = janelaDeslizante.getBase();
+      int proximo = janelaDeslizante.getProximoNumeroSequencia();
+
+      // se a janela estiver vazia (base == proximo), nao faz nada
+      if (base == proximo) {
+        System.out.println("TX (GBN): Timeout mas janela vazia. Ignorando.");
+        return;
+      }
+
+      System.out.println("TX (GBN): Timeout! Retransmitindo TODA a janela a partir de " + base);
+
+      int seqAtual = base;
+      int espacoSequencia = janelaDeslizante.getEspacoSequencia();
+
+      // percorre circularmente da Base ate o Proximo
+      while (seqAtual != proximo) {
+        int[] quadroReenviar = janelaDeslizante.getQuadro(seqAtual);
+
+        if (quadroReenviar != null) { // tem quadro pra reenviar
+          System.out.println("TX (GBN): Reenviando seq " + seqAtual);
+          this.camadaFisicaTransmissora.transmitirQuadro(quadroReenviar);
+        }
+
+        // Avança para o próximo quadro usando o módulo correto obtido da classe
+        seqAtual = (seqAtual + 1) % espacoSequencia;
+      } // fim whlie
+
+      // reinicia timer ate o ack do mais antigo (base) chegar
       iniciarTimer();
-    }
+
+    } else {
+      // janela de 1 bit (Stop-and-Wait)
+      int base = janelaDeslizante.getBase();
+
+      // pega o quadro salvo no buffer
+      int[] quadroRetransmitir = janelaDeslizante.getQuadro(base);
+
+      if (quadroRetransmitir != null) {
+        System.out.println("TX: Timeout! Retransmitindo sequencia " + base);
+        this.camadaFisicaTransmissora.transmitirQuadro(quadroRetransmitir);
+        iniciarTimer();
+      }
+    } // fim if/else
+
   }// fim metodo
 
   /**
@@ -793,29 +835,61 @@ public class CamadaEnlaceDadosTransmissora {
 
   public synchronized void processarAckDeControle(int seqAck) {
 
-    // int seqAck = seqAckFlag & ~MASCARA_FLAG_ACK;
+    int tipoFluxo = this.controlerTelaPrincipal.opcaoControleFluxoSelecionada();
 
     System.out.println("TX: Estado Janela -> Base: " + janelaDeslizante.getBase() + " | Proximo: "
         + janelaDeslizante.getProximoNumeroSequencia());
 
-    if (seqAck == janelaDeslizante.getBase()) {
-      System.out.println("TX: ACK " + seqAck + " CONFIRMADO! Atualizando janela...");
+    if (tipoFluxo == 0) {
+      // janela deslizante de 1 bit (Stop-and-Wait) - ACK simples
+      if (seqAck == janelaDeslizante.getBase()) {
+        System.out.println("TX: ACK " + seqAck + " CONFIRMADO! Atualizando janela...");
+        janelaDeslizante.atualizarBase(seqAck);
+        cancelarTimer();
 
-      // atualizar janela
-      janelaDeslizante.atualizarBase(seqAck);
-
-      cancelarTimer();
-
-      // envia o proximo se tiver
-      try {
-        CamadaEnlaceDadosTransmissoraControleDeFluxo(null);
-      } catch (ErroDeVerificacaoException e) {
-        e.printStackTrace();
+        // envia o proximo se tiver
+        try {
+          CamadaEnlaceDadosTransmissoraControleDeFluxo(null);
+        } catch (ErroDeVerificacaoException e) {
+          e.printStackTrace();
+        }
+      } else {
+        System.out.println("TX: ACK " + seqAck + " IGNORADO (Esperava: " + janelaDeslizante.getBase() + ")");
       }
 
-    } else {
-      // nao eh o ack correto
-      System.out.println("TX: ACK " + seqAck + " IGNORADO (Esperava: " + janelaDeslizante.getBase() + ")");
+    } else if (tipoFluxo == 1) {
+      // Go-Back-N - ACK cumulativo
+      // Aceita se ACK == base OU esta dentro da janela
+      if (seqAck == janelaDeslizante.getBase() || janelaDeslizante.estaDentroDaJanela(seqAck)) {
+        System.out.println("TX (GBN): ACK " + seqAck + " CONFIRMADO! Atualizando ate " + seqAck);
+
+        // atualiza a base para seqAck + 1
+        janelaDeslizante.atualizarBase(seqAck);
+
+        cancelarTimer();
+
+        // se ainda tiver quadros aguardando por acks, reinicia timer
+        if (janelaDeslizante.getBase() != janelaDeslizante.getProximoNumeroSequencia()) {
+          System.out.println("TX (GBN): Ainda ha quadros em transito. Reiniciando timer.");
+          try {
+            iniciarTimer();
+          } catch (ErroDeVerificacaoException e) {
+            e.printStackTrace();
+          }
+        } else {
+          System.out.println("TX (GBN): Janela vazia. Timer cancelado.");
+        }
+
+        // tenta enviar mais quadros se houver na fila
+        try {
+          CamadaEnlaceDadosTransmissoraControleDeFluxo(null);
+        } catch (ErroDeVerificacaoException e) {
+          e.printStackTrace();
+        }
+
+      } else {
+        System.out.println("TX (GBN): ACK " + seqAck + " fora da janela ou duplicado. Ignorando.");
+      }
     }
 
   }
@@ -857,7 +931,42 @@ public class CamadaEnlaceDadosTransmissora {
 
   } // fim da janela Deslizante de 1 bit
 
-  public void CamadaEnlaceDadosTransmissoraJanelaDeslizanteGoBackN(int quadro[]) {
+  public void CamadaEnlaceDadosTransmissoraJanelaDeslizanteGoBackN(int quadro[]) throws ErroDeVerificacaoException {
+    if (quadro != null) {
+      // adiciona o quadro na fila de envio caso algum quadro real seja passado, caso
+      // contrario processa os quadros ja da fila
+      filaDeEnvio.add(quadro);
+    }
+
+    // envia quadros enquanto a fila esta com elementos e a janela permite
+    while (!filaDeEnvio.isEmpty() && janelaDeslizante.podeEnviar()) {
+
+      int[] dadosSemCabecalho = filaDeEnvio.poll();
+      int sequencia = janelaDeslizante.getProximoNumeroSequencia();
+
+      System.out.println("TX (GBN): Enviando sequencia " + sequencia);
+
+      // Monta e codifica o quadro
+      int[] quadroComCabecalho = ManipulacaoBits.anexarCabecalho(dadosSemCabecalho, sequencia);
+      int[] quadroEnquadrado = CamadaEnlaceDadosTransmissoraEnquadramento(quadroComCabecalho);
+      int[] quadroFinal = CamadaEnlaceDadosTransmissoraControleDeErro(quadroEnquadrado);
+
+      // salva buffer na janela deslizante para caso de reenvio
+      janelaDeslizante.adicionarNoBuffer(sequencia, quadroFinal);
+
+      // IMPORTANTE: avanca a sequencia ANTES de transmitir
+      // para que o estado fique consistente quando o ACK chegar
+      janelaDeslizante.avancarSequencia();
+
+      // inicia o timer apenas no primeiro quadro da janela
+      if (this.timer == null) {
+        iniciarTimer();
+      }
+
+      // transmite por ultimo
+      this.camadaFisicaTransmissora.transmitirQuadro(quadroFinal);
+
+    } // fim do while
 
   } // fim do go-back-n
 
@@ -882,10 +991,10 @@ public class CamadaEnlaceDadosTransmissora {
         this.janelaDeslizante = new JanelaDeslizante(1, 1);
         break;
       case 1:
-        this.janelaDeslizante = new JanelaDeslizante(4, 8);
+        this.janelaDeslizante = new JanelaDeslizante(4, 3);
         break;
       case 2:
-        this.janelaDeslizante = new JanelaDeslizante(4, 8);
+        this.janelaDeslizante = new JanelaDeslizante(4, 3);
         break;
       default:
         break;

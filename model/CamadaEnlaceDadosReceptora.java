@@ -762,4 +762,13 @@ public class CamadaEnlaceDadosReceptora {
 
   }// fim do metodo
 
+  /**
+   * metodo que reseta a camada de enlace de dados transmissora para mudar a
+   * janela em caso de novas tentativas
+   */
+  public void reset() {
+    this.numeroSequenciaEsperado = 0;
+    System.out.println("RX: Resetado. Esperando sequencia 0.");
+  }
+
 }// fim da classe CamadaEnlaceDadosReceptora

@@ -97,4 +97,14 @@ public class Host {
 		this.aplicacaoTransmissora.iniciarTransmissao(mensagem);
 	}// fim enviarMensagem
 
+	/**
+	 * redefine as camadas de enlace de dados para reiniciar a transmissao
+	 */
+	public void resetCamadaEnlace() {
+		// parte transmissora, janela
+		this.camadaEnlaceDadosTransmissora.reset();
+		// parte receptora, numero de sequencia esperado
+		this.camadaEnlaceDadosReceptora.reset();
+	} // fim resetCamadaEnlace
+
 } // fim class

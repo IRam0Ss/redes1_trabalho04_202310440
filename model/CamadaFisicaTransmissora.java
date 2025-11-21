@@ -17,6 +17,7 @@ public class CamadaFisicaTransmissora {
   private ControlerTelaPrincipal controleTelaPrincipal; // referencia para a interface grafica
   private MeioDeComunicacao meioDeComunicacao; // referencia para o meio de comunicacao
 
+  @SuppressWarnings("unused")
   private CamadaEnlaceDadosTransmissora camadaEnlaceDadosTransmissora; // referencia a classe superior
 
   /**
@@ -58,11 +59,6 @@ public class CamadaFisicaTransmissora {
         alert.setContentText("Nao eh possivel utilizar codificacao binaria e violacao da camada fisica");
         alert.showAndWait();
 
-        // aborta a transmissao
-        if (this.camadaEnlaceDadosTransmissora != null) {
-          camadaEnlaceDadosTransmissora.abortarTranmissao();
-        } // fim if
-
       });
       return;
     } // fim do if
@@ -73,15 +69,15 @@ public class CamadaFisicaTransmissora {
 
     } else { // se nao faz o normal
       switch (tipoDeCodificacao) {
-      case 0: // codificao binaria
-        fluxoBrutoDeBits = CamadaFisicaTransmissoraCodificacaoBinaria(quadro);
-        break;
-      case 1: // codificacao manchester
-        fluxoBrutoDeBits = CamadaFisicaTransmissoraCodificacaoManchester(quadro);
-        break;
-      case 2: // codificacao manchester diferencial
-        fluxoBrutoDeBits = CamadaFisicaTransmissoraCodificacaoManchesterDiferencial(quadro);
-        break;
+        case 0: // codificao binaria
+          fluxoBrutoDeBits = CamadaFisicaTransmissoraCodificacaoBinaria(quadro);
+          break;
+        case 1: // codificacao manchester
+          fluxoBrutoDeBits = CamadaFisicaTransmissoraCodificacaoManchester(quadro);
+          break;
+        case 2: // codificacao manchester diferencial
+          fluxoBrutoDeBits = CamadaFisicaTransmissoraCodificacaoManchesterDiferencial(quadro);
+          break;
       }// fim do switch/case
     }
     final int[] fluxoBrutoBitsExibir = fluxoBrutoDeBits;

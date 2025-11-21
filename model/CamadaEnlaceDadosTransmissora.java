@@ -23,19 +23,14 @@ public class CamadaEnlaceDadosTransmissora {
 
   private final int TIMEOUT_MILISEGUNDOS = 3000;
 
-  // maquina de estados
-  private volatile String estado = "PRONTO_PARA_ENVIAR"; // estado varia entre PRONTO_PARA_ENVIAR e ESPERANDO_ACK
-
   // fila de envio e quadro em espera
   private Queue<int[]> filaDeEnvio = new LinkedList<>();
-  private int[] quadroEmEspera;
 
   // timer
   private Timer timer;
 
   // controle fluxo
   private JanelaDeslizante janelaDeslizante;
-  private final int MASCARA_FLAG_ACK = 1 << 30; // mascara para identificar o bit de flag ACK no numero de sequencia
 
   /**
    * construtor da classe
@@ -825,17 +820,6 @@ public class CamadaEnlaceDadosTransmissora {
 
   }
 
-  /**
-   * metodo responsavel por abortar uma transmissao invalida
-   */
-  public synchronized void abortarTranmissao() {
-    System.out.println("PROBLEMA DETECTADO, ABORTANDO TRANSMISSAO!");
-    cancelarTimer();
-    filaDeEnvio.clear();
-    quadroEmEspera = null;
-    estado = "PRONTO_PARA_ENVIAR";
-  }// fim do abortarTransmissao
-
   public void CamadaEnlaceDadosTransmissoraJanelaDeslizanteUmBit(int quadro[]) throws ErroDeVerificacaoException {
 
     if (quadro != null) {
@@ -880,5 +864,34 @@ public class CamadaEnlaceDadosTransmissora {
   public void CamadaEnlaceDadosTransmissoraJanelaDeslizanteComRetransmissaoSeletiva(int quadro[]) {
 
   }// fim da retransmissao seletiva
+
+  /**
+   * metodo que reseta a camada de enlace de dados transmissora para mudar a
+   * janela em caso de novas tentativas
+   */
+  public void reset() {
+    // limpa fila e timers possiveis existentes
+    filaDeEnvio.clear();
+    cancelarTimer();
+
+    // le e configura novamente os elementos baseados na interface atual
+    int tipoFLuxo = this.controlerTelaPrincipal.opcaoControleFluxoSelecionada();
+    // define tamanho da janela
+    switch (tipoFLuxo) {
+      case 0:
+        this.janelaDeslizante = new JanelaDeslizante(1, 1);
+        break;
+      case 1:
+        this.janelaDeslizante = new JanelaDeslizante(4, 8);
+        break;
+      case 2:
+        this.janelaDeslizante = new JanelaDeslizante(4, 8);
+        break;
+      default:
+        break;
+    }
+    System.out.println("TX: Resetado. Protocolo: " + tipoFLuxo);
+
+  }
 
 } // fim da classe

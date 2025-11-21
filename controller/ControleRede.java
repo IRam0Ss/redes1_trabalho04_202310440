@@ -64,6 +64,9 @@ public class ControleRede {
 	 * @param mensagem mensagem as ser transmitida
 	 */
 	public void iniciarSimulacao(String mensagem) throws ErroDeVerificacaoException {
+
+		this.hostA.resetCamadaEnlace();
+		this.hostB.resetCamadaEnlace();
 		this.hostA.enviarMensagem(mensagem);
 	}// fim de iniciarSimulacao
 

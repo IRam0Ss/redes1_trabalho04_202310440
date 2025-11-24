@@ -6,6 +6,8 @@ package util;
  */
 public class ManipulacaoBits {
 
+  // BIT 31: Tipo de quadro (0=DADOS, 1=CONTROLE)
+  public static final int MASCARA_TIPO_CONTROLE = 1 << 31; // bit de sinal para distinguir controle de dados
   public static final int MASCARA_FLAG_ACK = 1 << 30; // mascara para identificar ACK
   public static final int MASCARA_FLAG_NACK = 1 << 29; // mascara para identificar NACK
 
@@ -18,7 +20,8 @@ public class ManipulacaoBits {
   public static int[] montarQuadroAck(int seqAck) {
     // ACK não tem dados, só cabeçalho com número de sequência
     int[] quadroAck = new int[1];
-    int cabecalhoFinal = MASCARA_FLAG_ACK | (seqAck << 1) | 1; // adiciona marcador de controle
+    // Bit 31=1 (controle), Bit 30=1 (ACK), seq no meio, bit 0=1 (marcador)
+    int cabecalhoFinal = MASCARA_TIPO_CONTROLE | MASCARA_FLAG_ACK | (seqAck << 1) | 1;
     quadroAck[0] = cabecalhoFinal;
     return quadroAck;
   }
@@ -33,7 +36,8 @@ public class ManipulacaoBits {
   public static int[] montarQuadroNack(int seqNack) {
     // NACK não tem dados, só cabeçalho com número de sequência e flag NACK
     int[] quadroNack = new int[1];
-    int cabecalhoFinal = MASCARA_FLAG_ACK | MASCARA_FLAG_NACK | (seqNack << 1) | 1; // ACK + NACK = NACK
+    // Bit 31=1 (controle), Bit 30=1 (ACK), Bit 29=1 (NACK), seq no meio, bit 0=1
+    int cabecalhoFinal = MASCARA_TIPO_CONTROLE | MASCARA_FLAG_ACK | MASCARA_FLAG_NACK | (seqNack << 1) | 1;
     quadroNack[0] = cabecalhoFinal;
     return quadroNack;
   }
@@ -48,7 +52,13 @@ public class ManipulacaoBits {
     if (quadro == null || quadro.length == 0)
       return false;
     int cabecalho = quadro[0];
-    // É NACK se tem ambas as flags: ACK e NACK
+    // CORRECAO BUG 7: Verificar PRIMEIRO se eh quadro de controle (bit 31)
+    // Soh depois verificar flags ACK e NACK
+    boolean ehControle = (cabecalho & MASCARA_TIPO_CONTROLE) != 0;
+    if (!ehControle) {
+      return false; // Quadro de dados nao pode ser NACK
+    }
+    // É NACK se eh controle E tem ambas as flags: ACK e NACK
     return ((cabecalho & MASCARA_FLAG_ACK) != 0) && ((cabecalho & MASCARA_FLAG_NACK) != 0);
   }
 
@@ -62,7 +72,13 @@ public class ManipulacaoBits {
     if (quadro == null || quadro.length == 0)
       return false;
     int cabecalho = quadro[0];
-    // É ACK se tem flag ACK (NACK também tem essa flag)
+    // CORRECAO BUG 7: Verificar PRIMEIRO se eh quadro de controle (bit 31)
+    // Soh depois verificar flag ACK
+    boolean ehControle = (cabecalho & MASCARA_TIPO_CONTROLE) != 0;
+    if (!ehControle) {
+      return false; // Quadro de dados nao pode ser ACK
+    }
+    // É ACK se eh controle E tem flag ACK (NACK também tem essa flag)
     return (cabecalho & MASCARA_FLAG_ACK) != 0;
   }
 
@@ -139,9 +155,7 @@ public class ManipulacaoBits {
         }
 
       } // fim do loop por char
-      if (valorChar != 0) { // caso o valor do char seja valido, adiciona o char no array da mensagem
-        charMensagem[i] = (char) valorChar; // converte o binario do bit num array de char
-      }
+      charMensagem[i] = (char) valorChar; // converte o binario do bit num array de char
 
     } // fim do loop
 
@@ -336,9 +350,22 @@ public class ManipulacaoBits {
 
     // nao encontrou nenhum bit '1'.
     if (ultimoBitUm == -1) {
-      if (quadro.length > 0)
-        return 8;
-      return 0; // Quadro vazio
+      // verifica se o array está realmente todo zerado
+      // Se todos os inteiros forem 0, retorna 0 (quadro vazio)
+      // Caso contrário, pode haver padding e retorna 8
+      boolean todosZero = true;
+      for (int val : quadro) {
+        if (val != 0) {
+          todosZero = false;
+          break;
+        }
+      }
+
+      if (todosZero) {
+        return 0; // Quadro completamente vazio (todos os bits são 0)
+      } else {
+        return 8; // Array tem valores mas nenhum bit 1 foi encontrado (caso raro)
+      }
     }
 
     int byteOndeOcorreu = ultimoBitUm / 8;
@@ -381,8 +408,8 @@ public class ManipulacaoBits {
 
   public static int lerNumeroDeSequencia(int[] quadroComCabecalho) {
     int cabecalhoBruto = quadroComCabecalho[0];
-    // remove as flags ACK e NACK
-    int semFlags = cabecalhoBruto & ~MASCARA_FLAG_ACK & ~MASCARA_FLAG_NACK;
+    // remove bit 31 (tipo controle), bit 30 (Flag ACK) e bit 29 (Flag NACK)
+    int semFlags = cabecalhoBruto & ~MASCARA_TIPO_CONTROLE & ~MASCARA_FLAG_ACK & ~MASCARA_FLAG_NACK;
     // remove mardador de controle e retorna numero de sequencia
     return semFlags >> 1;
   }// fim do metodo lerNumeroDeSequencia

@@ -32,9 +32,19 @@ public class JanelaDeslizante {
     this.tamanhoJanela = tamanhoJanela;
     this.espacoSequencia = 1 << bitsSequencia; // 2^bitsSequencia
 
-    // validacao do protocolo
+    // validacao CRITICA do protocolo Go-Back-N
+    // O espaco de sequencia DEVE ser maior que o tamanho da janela
+    // para evitar ambiguidade entre quadros novos e antigos
     if (this.espacoSequencia <= this.tamanhoJanela) {
-      System.out.println("AVISO: Espaco de sequencia pequeno demais para o tamanho da janela!");
+      throw new IllegalArgumentException(
+          "ERRO FATAL: Configuracao invalida de janela deslizante!\n" +
+              "Para protocolos de janela deslizante (Go-Back-N, Selective Repeat),\n" +
+              "o espaco de sequencia DEVE ser maior que o tamanho da janela.\n" +
+              "Configuracao atual: Tamanho janela=" + tamanhoJanela +
+              ", Espaco sequencia=" + espacoSequencia + " (2^" + bitsSequencia + ")\n" +
+              "Solucao: Use tamanhoJanela < " + espacoSequencia +
+              " ou aumente bitsSequencia para pelo menos " +
+              (Integer.SIZE - Integer.numberOfLeadingZeros(tamanhoJanela)) + " bits.");
     }
 
     this.base = 0;
@@ -48,7 +58,7 @@ public class JanelaDeslizante {
    * 
    * @return true se puder enviar, false se a janela tiver cheia
    */
-  public boolean podeEnviar() {
+  public synchronized boolean podeEnviar() {
     int quadrosEmTransito = (proximoNumeroDeSequencia - base + espacoSequencia) % espacoSequencia;
     return quadrosEmTransito < tamanhoJanela;
   } // fim do metodo podeEnviar
@@ -60,7 +70,7 @@ public class JanelaDeslizante {
    * @param numeroDeSequencia o numero de sequencia do quadro
    * @param quadro            o quadro a ser armazenado
    */
-  public void adicionarNoBuffer(int numeroDeSequencia, int[] quadro) {
+  public synchronized void adicionarNoBuffer(int numeroDeSequencia, int[] quadro) {
     bufferQuadros.put(numeroDeSequencia, quadro);
     ackRecebidos.put(numeroDeSequencia, false); // inicialmente, o ACK nao foi recebido
   } // fim do metodo adicionarNoBuffer
@@ -71,7 +81,7 @@ public class JanelaDeslizante {
    * @param numeroDeSequencia o numero de sequencia do quadro
    * @return o quadro armazenado com aquele numero de sequencia
    */
-  public int[] getQuadro(int numeroDeSequencia) {
+  public synchronized int[] getQuadro(int numeroDeSequencia) {
     return bufferQuadros.get(numeroDeSequencia);
   } // fim do metodo getQuadro
 
@@ -82,7 +92,7 @@ public class JanelaDeslizante {
    * @param numeroDeSequencia o numero de sequencia do quadro que teve o ACK
    *                          recebido
    */
-  public void marcarAckRecebido(int numeroDeSequencia) {
+  public synchronized void marcarAckRecebido(int numeroDeSequencia) {
     if (ackRecebidos.containsKey(numeroDeSequencia)) {
       ackRecebidos.put(numeroDeSequencia, true);
     }
@@ -95,7 +105,7 @@ public class JanelaDeslizante {
    * @param numeroDeSequencia o numero de sequencia do quadro
    * @return true se o ACK foi recebido, false caso contrario
    */
-  public boolean isAckRecebido(int numeroDeSequencia) {
+  public synchronized boolean isAckRecebido(int numeroDeSequencia) {
     return ackRecebidos.getOrDefault(numeroDeSequencia, false);
   } // fim do metodo isAckRecebido
 
@@ -105,7 +115,7 @@ public class JanelaDeslizante {
    * @param numeroDeSequencia o numero de sequencia a ser verificado
    * @return true se estiver dentro da janela, false caso contrario
    */
-  public boolean estaDentroDaJanela(int numeroDeSequencia) {
+  public synchronized boolean estaDentroDaJanela(int numeroDeSequencia) {
     int distanciaInicio = (numeroDeSequencia - base + espacoSequencia) % espacoSequencia;
     int tamanhoAtual = (proximoNumeroDeSequencia - base + espacoSequencia) % espacoSequencia;
     return distanciaInicio < tamanhoAtual;
@@ -124,7 +134,7 @@ public class JanelaDeslizante {
    * avanca o ponteiro sequencia para o proximo numero de sequencia, mantendo a
    * logica de ciclos de numero de sequencia
    */
-  public void avancarSequencia() {
+  public synchronized void avancarSequencia() {
     this.proximoNumeroDeSequencia = (this.proximoNumeroDeSequencia + 1) % espacoSequencia;
   } // fim do metodo avancarSequencia
 
@@ -133,7 +143,7 @@ public class JanelaDeslizante {
    * 
    * @param numeroDeSequencia o numero de sequencia para atualizar a base
    */
-  public void atualizarBase(int numeroDeSequencia) {
+  public synchronized void atualizarBase(int numeroDeSequencia) {
     // define a nova base a apassar o ponteiro base ate o ACK recebido
     this.base = (numeroDeSequencia + 1) % espacoSequencia;
 
@@ -145,7 +155,7 @@ public class JanelaDeslizante {
    * avanca a base da janela enquanto os ACKs forem recebidos, (USADO PARA A
    * RETRANSMISSAO SELETIVA)
    */
-  public void deslizarBaseSeletiva() {
+  public synchronized void deslizarBaseSeletiva() {
     boolean houveMovimento = false;
     // enquanto o quadro da base tiver como falso no ackRecebidos
     while (ackRecebidos.getOrDefault(base, false)) {
@@ -167,25 +177,25 @@ public class JanelaDeslizante {
    * @param numeroDeSequencia o numero de sequencia a ser verificado
    * @return true se estiver dentro da janela de recepcao, false caso contrario
    */
-  public boolean estaDentroDaJanelaRecepcao(int numeroDeSequencia) {
+  public synchronized boolean estaDentroDaJanelaRecepcao(int numeroDeSequencia) {
     int distancia = (numeroDeSequencia - base + espacoSequencia) % espacoSequencia;
     return distancia < tamanhoJanela;
   }
 
   // --- gets e sets ---
-  public int getBase() {
+  public synchronized int getBase() {
     return base;
   }
 
-  public int getProximoNumeroSequencia() {
+  public synchronized int getProximoNumeroSequencia() {
     return proximoNumeroDeSequencia;
   }
 
-  public int getTamanhoJanela() {
+  public synchronized int getTamanhoJanela() {
     return tamanhoJanela;
   }
 
-  public int getEspacoSequencia() {
+  public synchronized int getEspacoSequencia() {
     return espacoSequencia;
   }
 

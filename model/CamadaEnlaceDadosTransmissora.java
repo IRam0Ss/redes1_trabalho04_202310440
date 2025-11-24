@@ -962,6 +962,13 @@ public class CamadaEnlaceDadosTransmissora {
     }
   }
 
+  /**
+   * metodo que implementa a janela deslizante de 1 bit (stop and wait)
+   * 
+   * @param quadro quadro a ser transmitido, ou null para processar a fila
+   * @throws ErroDeVerificacaoException excecao lancada caso ocorra erro na
+   *                                    verificacao
+   */
   public void CamadaEnlaceDadosTransmissoraJanelaDeslizanteUmBit(int quadro[]) throws ErroDeVerificacaoException {
 
     if (quadro != null) {
@@ -999,6 +1006,12 @@ public class CamadaEnlaceDadosTransmissora {
 
   } // fim da janela Deslizante de 1 bit
 
+  /**
+   * metodo que implementa a janela deslizante go-back-n
+   * 
+   * @param quadro quadro a ser transmitido, ou null para processar a fila
+   * @throws ErroDeVerificacaoException excecao lancada caso ocorra erro na
+   */
   public void CamadaEnlaceDadosTransmissoraJanelaDeslizanteGoBackN(int quadro[]) throws ErroDeVerificacaoException {
     if (quadro != null) {
       // adiciona o quadro na fila de envio caso algum quadro real seja passado, caso
@@ -1037,6 +1050,13 @@ public class CamadaEnlaceDadosTransmissora {
 
   } // fim do go-back-n
 
+  /**
+   * metodo que implementa a janela deslizante com retransmissao seletiva
+   * 
+   * @param quadro quadro a ser transmitido, ou null para processar a fila
+   * @throws ErroDeVerificacaoException excecao lancada caso ocorra erro na
+   *                                    verificacao
+   */
   public void CamadaEnlaceDadosTransmissoraJanelaDeslizanteComRetransmissaoSeletiva(int quadro[])
       throws ErroDeVerificacaoException {
 
@@ -1140,7 +1160,6 @@ public class CamadaEnlaceDadosTransmissora {
         break;
     }
     System.out.println("TX: Resetado. Protocolo: " + tipoFLuxo);
-
-  }
+  } // fim do metodo reset
 
 } // fim da classe

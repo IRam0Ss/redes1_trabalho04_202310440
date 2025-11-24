@@ -3,7 +3,7 @@
 * Autor............: Iury Ramos Sodre 
 * Matricula........: 202310440
 * Inicio...........: 15/11/2025
-* Ultima alteracao.: 20/11/2025
+* Ultima alteracao.: 23/11/2025
 * Nome.............: E.D.E.N. (sistema de simulacao de transmicao de sinais)
 * Funcao...........: simula a transmissao de sinais que acontece numa rede.
 *************************************************************** */

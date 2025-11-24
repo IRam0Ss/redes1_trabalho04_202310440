@@ -855,6 +855,11 @@ public class CamadaEnlaceDadosReceptora {
 
   } // fim do metodo CamadaEnlaceDadosReceptoraJanelaDeslizanteGoBackN
 
+  /**
+   * metodo que implementa a janela deslizante com retransmissao seletiva
+   * 
+   * @param quadro quadro recebido
+   */
   public void CamadaEnlaceDadosReceptoraJanelaDeslizanteComRetransmissaoSeletiva(int quadro[]) {
 
     if (janelaRecepcao == null) {

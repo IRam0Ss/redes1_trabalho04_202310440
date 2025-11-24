@@ -4,6 +4,9 @@ import controller.ControlerTelaPrincipal;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
+import javafx.animation.Timeline;
+import javafx.animation.KeyFrame;
+import javafx.util.Duration;
 import util.ErroDeVerificacaoException;
 import util.ManipulacaoBits;
 
@@ -57,8 +60,13 @@ public class CamadaFisicaTransmissora {
         alert.setTitle("Mensagem de Erro");
         alert.setHeaderText("ERRO! COMBINACAO NAO PERMITIDA");
         alert.setContentText("Nao eh possivel utilizar codificacao binaria e violacao da camada fisica");
-        alert.showAndWait();
+        alert.show();
 
+        // Fechar automaticamente após 5 segundos
+        Timeline timeline = new Timeline(new KeyFrame(
+            Duration.seconds(4),
+            ae -> alert.close()));
+        timeline.play();
       });
       return;
     } // fim do if

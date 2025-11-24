@@ -1,6 +1,8 @@
 package model;
 
+import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -21,7 +23,7 @@ public class CamadaEnlaceDadosTransmissora {
 
   // constantes do protocolo de ACK e Temporizador,
 
-  private final int TIMEOUT_MILISEGUNDOS = 3000;
+  private final int TIMEOUT_MILISEGUNDOS = 5000;
 
   // fila de envio e quadro em espera
   private Queue<int[]> filaDeEnvio = new LinkedList<>();
@@ -31,6 +33,7 @@ public class CamadaEnlaceDadosTransmissora {
 
   // controle fluxo
   private JanelaDeslizante janelaDeslizante;
+  private Map<Integer, Timer> timersRetransmissao = new HashMap<>(); // usado apenas na retransmissao seletiva
 
   /**
    * construtor da classe
@@ -49,6 +52,10 @@ public class CamadaEnlaceDadosTransmissora {
         break;
       case 1:// janela deslizante go-back-n
         this.janelaDeslizante = new JanelaDeslizante(4, 3);
+        break;
+      case 2:// janela deslizante com retransmissão seletiva
+        this.janelaDeslizante = new JanelaDeslizante(4, 3);
+        this.timersRetransmissao = new HashMap<>();
         break;
       default:
         break;
@@ -886,12 +893,73 @@ public class CamadaEnlaceDadosTransmissora {
         } catch (ErroDeVerificacaoException e) {
           e.printStackTrace();
         }
+      }
+    } else if (tipoFluxo == 2) { // Retransmissão Seletiva
 
+      if (janelaDeslizante.estaDentroDaJanela(seqAck)) {
+        System.out.println("TX (SR): ACK " + seqAck + " recebido.");
+
+        // Marca na janela que recebeu
+        janelaDeslizante.marcarAckRecebido(seqAck);
+
+        // Cancela o timer específico
+        if (timersRetransmissao.containsKey(seqAck)) {
+          timersRetransmissao.get(seqAck).cancel();
+          timersRetransmissao.remove(seqAck);
+        }
+
+        // Tenta deslizar a base (método da sua classe que já faz o loop)
+        janelaDeslizante.deslizarBaseSeletiva();
+
+        // Tenta enviar mais dados da fila
+        try {
+          CamadaEnlaceDadosTransmissoraControleDeFluxo(null);
+        } catch (ErroDeVerificacaoException e) {
+          e.printStackTrace();
+        }
       } else {
-        System.out.println("TX (GBN): ACK " + seqAck + " fora da janela ou duplicado. Ignorando.");
+        System.out.println("TX (SR): ACK " + seqAck + " fora da janela ou duplicado. Ignorando.");
       }
     }
+  }
 
+  /**
+   * Processa NACK (Negative Acknowledgment) recebido
+   * NACK indica que o quadro foi recebido com erro e precisa retransmitir
+   * IMEDIATAMENTE
+   * 
+   * @param seqNack numero de sequência do quadro que precisa ser retransmitido
+   */
+  public synchronized void processarNackDeControle(int seqNack) {
+    int tipoFluxo = this.controlerTelaPrincipal.opcaoControleFluxoSelecionada();
+
+    // NACK so existe na Retransmissao Seletiva (como ensinado pelo professor)
+    if (tipoFluxo != 2) {
+      System.out.println("TX: NACK ignorado (apenas usado em Retransmissao Seletiva)");
+      return;
+    }
+
+    System.out.println("TX: NACK " + seqNack + " recebido! Retransmitindo IMEDIATAMENTE...");
+    System.out.println("TX: Estado Janela -> Base: " + janelaDeslizante.getBase() + " | Proximo: "
+        + janelaDeslizante.getProximoNumeroSequencia());
+
+    // Retransmissão Seletiva: retransmite APENAS o quadro com NACK
+    if (janelaDeslizante.estaDentroDaJanela(seqNack)) {
+      int[] quadroRetransmitir = janelaDeslizante.getQuadro(seqNack);
+      if (quadroRetransmitir != null) {
+        System.out.println("TX (SR): Retransmitindo APENAS seq " + seqNack + " por NACK");
+        try {
+          this.camadaFisicaTransmissora.transmitirQuadro(quadroRetransmitir);
+          // Reinicia timer individual para esse quadro
+          if (timersRetransmissao.containsKey(seqNack)) {
+            timersRetransmissao.get(seqNack).cancel();
+          }
+          iniciarTimerIndividual(seqNack);
+        } catch (ErroDeVerificacaoException e) {
+          e.printStackTrace();
+        }
+      }
+    }
   }
 
   public void CamadaEnlaceDadosTransmissoraJanelaDeslizanteUmBit(int quadro[]) throws ErroDeVerificacaoException {
@@ -954,7 +1022,6 @@ public class CamadaEnlaceDadosTransmissora {
       // salva buffer na janela deslizante para caso de reenvio
       janelaDeslizante.adicionarNoBuffer(sequencia, quadroFinal);
 
-      // IMPORTANTE: avanca a sequencia ANTES de transmitir
       // para que o estado fique consistente quando o ACK chegar
       janelaDeslizante.avancarSequencia();
 
@@ -970,9 +1037,77 @@ public class CamadaEnlaceDadosTransmissora {
 
   } // fim do go-back-n
 
-  public void CamadaEnlaceDadosTransmissoraJanelaDeslizanteComRetransmissaoSeletiva(int quadro[]) {
+  public void CamadaEnlaceDadosTransmissoraJanelaDeslizanteComRetransmissaoSeletiva(int quadro[])
+      throws ErroDeVerificacaoException {
+
+    if (quadro != null) {
+      filaDeEnvio.add(quadro);
+    }
+    // envia quadros enquanto a fila esta com elementos e a janela permite
+    while (!filaDeEnvio.isEmpty() && janelaDeslizante.podeEnviar()) {
+
+      int[] dadosSemCabecalho = filaDeEnvio.poll();
+      int sequencia = janelaDeslizante.getProximoNumeroSequencia();
+
+      System.out.println("TX (RS): Enviando sequencia " + sequencia);
+
+      // Monta e codifica o quadro
+      int[] quadroComCabecalho = ManipulacaoBits.anexarCabecalho(dadosSemCabecalho, sequencia);
+      int[] quadroEnquadrado = CamadaEnlaceDadosTransmissoraEnquadramento(quadroComCabecalho);
+      int[] quadroFinal = CamadaEnlaceDadosTransmissoraControleDeErro(quadroEnquadrado);
+
+      // salva buffer na janela deslizante para caso de reenvio
+      janelaDeslizante.adicionarNoBuffer(sequencia, quadroFinal);
+
+      // transmite por ultimo
+      this.camadaFisicaTransmissora.transmitirQuadro(quadroFinal);
+
+      // inicia o timer para este quadro
+      iniciarTimerIndividual(sequencia);
+
+      // avanca a sequencia apos o envio
+      janelaDeslizante.avancarSequencia();
+
+    }
 
   }// fim da retransmissao seletiva
+
+  /**
+   * metodo que inicia o timer individual para o quadro de numero de sequencia seq
+   * 
+   * @param seq numero de sequencia do quadro a ter o timer iniciado
+   */
+  private void iniciarTimerIndividual(int seq) {
+    if (timersRetransmissao.containsKey(seq)) {
+      // se ja tiver um timer para esse quadro, cancela
+      timersRetransmissao.get(seq).cancel();
+    }
+
+    Timer novoTimer = new Timer();
+    novoTimer.schedule(new TimerTask() {
+      @Override
+      public void run() {
+        try {
+          // timeout específico para este quadro
+          System.out.println("TX (SR): Timeout da sequencia " + seq + ". Retransmitindo...");
+
+          // recupera quadro do buffer da jalena
+          int[] quadro = janelaDeslizante.getQuadro(seq);
+
+          // quadro nao confirmado ainda retransmite
+          if (quadro != null && !janelaDeslizante.isAckRecebido(seq)) {
+            camadaFisicaTransmissora.transmitirQuadro(quadro);
+            iniciarTimerIndividual(seq); // Reinicia o timer dele
+          }
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
+      }
+    }, 3000); // timeout de 3 segundos
+
+    timersRetransmissao.put(seq, novoTimer); // adiciona ao map de timers
+
+  } // fim do iniciar timer individual
 
   /**
    * metodo que reseta a camada de enlace de dados transmissora para mudar a
@@ -982,6 +1117,11 @@ public class CamadaEnlaceDadosTransmissora {
     // limpa fila e timers possiveis existentes
     filaDeEnvio.clear();
     cancelarTimer();
+    // se exixtir timers individuais, cancela todos
+    if (!timersRetransmissao.isEmpty()) {
+      timersRetransmissao.values().forEach(Timer::cancel);
+      timersRetransmissao.clear();
+    }
 
     // le e configura novamente os elementos baseados na interface atual
     int tipoFLuxo = this.controlerTelaPrincipal.opcaoControleFluxoSelecionada();

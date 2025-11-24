@@ -160,6 +160,18 @@ public class JanelaDeslizante {
     }
   }// fim do deslizarBaseSeletiva
 
+  /**
+   * verifica se o numero de sequencia esta dentro dos limites da janela de
+   * recepcao
+   * 
+   * @param numeroDeSequencia o numero de sequencia a ser verificado
+   * @return true se estiver dentro da janela de recepcao, false caso contrario
+   */
+  public boolean estaDentroDaJanelaRecepcao(int numeroDeSequencia) {
+    int distancia = (numeroDeSequencia - base + espacoSequencia) % espacoSequencia;
+    return distancia < tamanhoJanela;
+  }
+
   // --- gets e sets ---
   public int getBase() {
     return base;

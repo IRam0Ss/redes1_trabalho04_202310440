@@ -6,7 +6,8 @@ package util;
  */
 public class ManipulacaoBits {
 
-  public static final int MASCARA_FLAG_ACK = 1 << 30; // tamanho maximo do pacote em bits
+  public static final int MASCARA_FLAG_ACK = 1 << 30; // mascara para identificar ACK
+  public static final int MASCARA_FLAG_NACK = 1 << 29; // mascara para identificar NACK
 
   /**
    * Monta um quadro de ACK com o número de sequência.
@@ -20,6 +21,49 @@ public class ManipulacaoBits {
     int cabecalhoFinal = MASCARA_FLAG_ACK | (seqAck << 1) | 1; // adiciona marcador de controle
     quadroAck[0] = cabecalhoFinal;
     return quadroAck;
+  }
+
+  /**
+   * Monta um quadro de NACK (Negative Acknowledgment) com o número de sequência.
+   * NACK indica que o quadro foi recebido com erro e precisa ser retransmitido.
+   * 
+   * @param seqNack Número de sequência do quadro com erro
+   * @return int[] representando o quadro NACK
+   */
+  public static int[] montarQuadroNack(int seqNack) {
+    // NACK não tem dados, só cabeçalho com número de sequência e flag NACK
+    int[] quadroNack = new int[1];
+    int cabecalhoFinal = MASCARA_FLAG_ACK | MASCARA_FLAG_NACK | (seqNack << 1) | 1; // ACK + NACK = NACK
+    quadroNack[0] = cabecalhoFinal;
+    return quadroNack;
+  }
+
+  /**
+   * Verifica se um quadro é um NACK
+   * 
+   * @param quadro Quadro a ser verificado
+   * @return true se for NACK, false caso contrário
+   */
+  public static boolean ehNack(int[] quadro) {
+    if (quadro == null || quadro.length == 0)
+      return false;
+    int cabecalho = quadro[0];
+    // É NACK se tem ambas as flags: ACK e NACK
+    return ((cabecalho & MASCARA_FLAG_ACK) != 0) && ((cabecalho & MASCARA_FLAG_NACK) != 0);
+  }
+
+  /**
+   * Verifica se um quadro é um ACK (positivo ou NACK)
+   * 
+   * @param quadro Quadro a ser verificado
+   * @return true se for ACK (inclui NACK), false caso contrário
+   */
+  public static boolean ehAck(int[] quadro) {
+    if (quadro == null || quadro.length == 0)
+      return false;
+    int cabecalho = quadro[0];
+    // É ACK se tem flag ACK (NACK também tem essa flag)
+    return (cabecalho & MASCARA_FLAG_ACK) != 0;
   }
 
   /**
@@ -337,10 +381,10 @@ public class ManipulacaoBits {
 
   public static int lerNumeroDeSequencia(int[] quadroComCabecalho) {
     int cabecalhoBruto = quadroComCabecalho[0];
-    // remove a flag
-    int semAck = cabecalhoBruto & ~MASCARA_FLAG_ACK;
-    // remove mardador de controle
-    return semAck >> 1;
+    // remove as flags ACK e NACK
+    int semFlags = cabecalhoBruto & ~MASCARA_FLAG_ACK & ~MASCARA_FLAG_NACK;
+    // remove mardador de controle e retorna numero de sequencia
+    return semFlags >> 1;
   }// fim do metodo lerNumeroDeSequencia
 
 } // fim da classe ManipulacaoBits

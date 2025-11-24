@@ -4,7 +4,11 @@ import controller.ControlerTelaPrincipal;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
+import javafx.animation.Timeline;
+import javafx.animation.KeyFrame;
+import javafx.util.Duration;
 import util.ErroDeVerificacaoException;
+import util.JanelaDeslizante;
 import util.ManipulacaoBits;
 
 public class CamadaEnlaceDadosReceptora {
@@ -19,8 +23,7 @@ public class CamadaEnlaceDadosReceptora {
 
   // constantes do protocolo
   private int numeroSequenciaEsperado = 0; // numero de sequencia esperado para o proximo quadro
-
-  private final int MASCARA_FLAG_ACK = 1 << 30; // mascara para identificar o bit de flag ACK no numero de sequencia
+  private JanelaDeslizante janelaRecepcao;// janela deslizante da camada receptora
 
   /**
    * construtor da classe
@@ -33,6 +36,7 @@ public class CamadaEnlaceDadosReceptora {
       ControlerTelaPrincipal controlerTelaPrincipal) {
     this.camadaAplicacaoReceptora = camadaAplicacaoReceptora;
     this.controlerTelaPrincipal = controlerTelaPrincipal;
+    janelaRecepcao = new JanelaDeslizante(4, 3);
   } // fim do construtor
 
   /**
@@ -74,6 +78,23 @@ public class CamadaEnlaceDadosReceptora {
 
       System.out.println("Camada Enlace Receptora: ERRO DETECTADO. " + e.getTitulo());
 
+      // NOVO: Envia NACK para retransmissão rápida (apenas na Retransmissão Seletiva)
+      int tipoFluxo = this.controlerTelaPrincipal.opcaoControleFluxoSelecionada();
+      if (tipoFluxo == 2) {
+        try {
+          // Tenta extrair o número de sequência do quadro corrompido (se possível)
+          int[] quadroDesenquadrado = CamadaEnlaceDadosReceptoraEnquadramento(quadro);
+          if (quadroDesenquadrado != null && quadroDesenquadrado.length > 0) {
+            int seqRecebida = ManipulacaoBits.lerNumeroDeSequencia(quadroDesenquadrado);
+            System.out.println("RX: Enviando NACK " + seqRecebida + " (quadro corrompido)");
+            enviarNack(seqRecebida);
+          }
+        } catch (Exception ex) {
+          // Se não conseguir extrair sequência, apenas descarta
+          System.out.println("RX: Quadro muito corrompido, descartando sem NACK.");
+        }
+      }
+
       // informar o usuario, da deteccao de erros
       Platform.runLater(() -> {
         Alert alert = new Alert(AlertType.WARNING);
@@ -81,6 +102,12 @@ public class CamadaEnlaceDadosReceptora {
         alert.setHeaderText(e.getTitulo()); // <-- MENSAGEM PERSONALIZADA
         alert.setContentText(e.getMensagem()); // <-- MENSAGEM PERSONALIZADA
         alert.show();
+
+        // Fechar automaticamente após 5 segundos
+        Timeline timeline = new Timeline(new KeyFrame(
+            Duration.seconds(4),
+            ae -> alert.close()));
+        timeline.play();
       });
 
       return; // sai do metodo sem processar o quadro
@@ -96,11 +123,23 @@ public class CamadaEnlaceDadosReceptora {
       return; // sai do metodo sem processar o quadro
     }
 
-    int cabecalhoBrutoComMarcador = quadroDesenquadrado[0];
+    // Verifica se é ACK ou NACK
+    boolean ehNack = ManipulacaoBits.ehNack(quadroDesenquadrado);
+    boolean ehAck = ManipulacaoBits.ehAck(quadroDesenquadrado);
 
-    boolean ehAck = (cabecalhoBrutoComMarcador & MASCARA_FLAG_ACK) != 0;
+    if (ehNack) {
+      // É NACK - processa retransmissão rápida
+      int seqNack = ManipulacaoBits.lerNumeroDeSequencia(quadroDesenquadrado);
+      System.out.println("RX: NACK " + seqNack + " recebido, repassando para TX.");
+
+      if (this.camadaEnlaceDadosTransmissoraIrma != null) {
+        this.camadaEnlaceDadosTransmissoraIrma.processarNackDeControle(seqNack);
+      }
+      return; // sai do metodo apos processar o nack
+    }
 
     if (ehAck) {
+      // É ACK positivo
       int seqAck = ManipulacaoBits.lerNumeroDeSequencia(quadroDesenquadrado);
 
       if (this.camadaEnlaceDadosTransmissoraIrma != null) {
@@ -754,6 +793,29 @@ public class CamadaEnlaceDadosReceptora {
     } // fim if
   }// fim do metodo enviarAckNumerico
 
+  /**
+   * Envia um quadro NACK (Negative Acknowledgment) para a camada transmissora
+   * Usado quando um erro é detectado no quadro recebido
+   * 
+   * @param numeroSequenciaNack numero de sequência do quadro com erro
+   */
+  private void enviarNack(int numeroSequenciaNack) {
+    // cria o quadro de NACK
+    int[] quadroNack = ManipulacaoBits.montarQuadroNack(numeroSequenciaNack);
+
+    System.out.println("RX: Enviando NACK " + numeroSequenciaNack + " (solicita retransmissão)");
+
+    // envia o quadro de NACK para a camada de enlace transmissora irma
+    if (this.camadaEnlaceDadosTransmissoraIrma != null) {
+      try {
+        this.camadaEnlaceDadosTransmissoraIrma.transmitirACK(quadroNack); // reutiliza o método transmitirACK
+      } catch (ErroDeVerificacaoException e) {
+        // NACKs não devem gerar erros, mas se ocorrer, apenas loga
+        System.out.println("ERRO AO ENVIAR NACK: " + e.getTitulo() + " - " + e.getMensagem());
+      } // fim try-catch
+    } // fim if
+  }// fim do metodo enviarNack
+
   public void CamadaEnlaceDadosReceptoraJanelaDeslizanteGoBackN(int quadro[]) throws ErroDeVerificacaoException {
 
     int seqRecebido = ManipulacaoBits.lerNumeroDeSequencia(quadro);
@@ -769,11 +831,12 @@ public class CamadaEnlaceDadosReceptora {
         this.camadaAplicacaoReceptora.receberQuadro(cargaUtil);
       }
 
-      // enviar ACK cumulativo (confirma este quadro)
-      enviarAckNumerico(numeroSequenciaEsperado);
-
-      // avanca para o proximo esperado
+      // Atualiza o número de sequência esperado
       numeroSequenciaEsperado = (numeroSequenciaEsperado + 1) % 8;
+      System.out.println("RX (GBN): Avancando. Proximo esperado: " + numeroSequenciaEsperado);
+
+      // Envia ACK DEPOIS de atualizar estado (evita dessincronia)
+      enviarAckNumerico(seqRecebido);
 
     } else {
       System.out.println("RX (GBN): Fora de ordem! Descartando e re-enviando ACK anterior.");
@@ -794,6 +857,52 @@ public class CamadaEnlaceDadosReceptora {
 
   public void CamadaEnlaceDadosReceptoraJanelaDeslizanteComRetransmissaoSeletiva(int quadro[]) {
 
+    if (janelaRecepcao == null) {
+      janelaRecepcao = new JanelaDeslizante(4, 3); // tamanho 4, max 3
+    }
+
+    int seqRecebido = ManipulacaoBits.lerNumeroDeSequencia(quadro);
+    int[] cargaUtil = ManipulacaoBits.removerCabecalho(quadro);
+
+    System.out.println("RX (SR): Recebido Seq: " + seqRecebido + " | Base Janela: " + janelaRecepcao.getBase());
+
+    if (janelaRecepcao.estaDentroDaJanelaRecepcao(seqRecebido)) {
+      // enviar um ack para esse quadro
+      enviarAckNumerico(seqRecebido);
+
+      // se esse quadro nao foi recebido antes
+      if (!janelaRecepcao.isAckRecebido(seqRecebido)) {
+        // salvamos os dados recebidos no buffer da janela
+        janelaRecepcao.adicionarNoBuffer(seqRecebido, cargaUtil);
+        // no caso da recepcao marcar ack como recebido eh uma forma de dizer que o
+        // quadro chegou
+        janelaRecepcao.marcarAckRecebido(seqRecebido);
+
+      }
+
+      // entrega os quadros em ordem para a camada de aplicacao
+      while (janelaRecepcao.isAckRecebido(janelaRecepcao.getBase())) {
+        int baseAtual = janelaRecepcao.getBase();
+        System.out.println("RX (SR): Entregando sequencia " + baseAtual + " para a aplicação.");
+
+        // pega o dado no buffer
+        int[] dadosParaAplicacao = janelaRecepcao.getQuadro(baseAtual);
+
+        if (this.camadaAplicacaoReceptora != null) {
+          this.camadaAplicacaoReceptora.receberQuadro(dadosParaAplicacao);
+        }
+
+        // avanca a janela receptora, ou seja, aumenta a base
+        janelaRecepcao.atualizarBase(baseAtual);
+
+      }
+
+    } else {
+      // fora da janela, ack perdido provavelmente
+      System.out.println("RX (SR): Quadro fora da janela (" + seqRecebido + "). Reenviando ACK.");
+      enviarAckNumerico(seqRecebido);
+    }
+
   }// fim do metodo
 
   /**
@@ -802,6 +911,7 @@ public class CamadaEnlaceDadosReceptora {
    */
   public void reset() {
     this.numeroSequenciaEsperado = 0;
+    janelaRecepcao = new JanelaDeslizante(4, 3); // tamanho 4, max 3
     System.out.println("RX: Resetado. Esperando sequencia 0.");
   }
 

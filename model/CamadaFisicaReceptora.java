@@ -4,6 +4,9 @@ import controller.ControlerTelaPrincipal;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
+import javafx.animation.Timeline;
+import javafx.animation.KeyFrame;
+import javafx.util.Duration;
 import util.ErroDeVerificacaoException;
 import util.ManipulacaoBits;
 
@@ -59,15 +62,15 @@ public class CamadaFisicaReceptora {
         fluxoBrutoDeBits = CamadaFisicaReceptoraDecodificacaoComViolacao(quadro, tipoDeDecodificacao);
       } else {
         switch (tipoDeDecodificacao) {
-        case 0: // codificao binaria
-          fluxoBrutoDeBits = CamadaFisicaReceptoraDecodificacaoBinaria(quadro);
-          break;
-        case 1: // codificacao manchester
-          fluxoBrutoDeBits = CamadaFisicaReceptoraDecodificacaoManchester(quadro);
-          break;
-        case 2: // codificacao manchester diferencial
-          fluxoBrutoDeBits = CamadaFisicaReceptoraDecodificacaoManchesterDiferencial(quadro);
-          break;
+          case 0: // codificao binaria
+            fluxoBrutoDeBits = CamadaFisicaReceptoraDecodificacaoBinaria(quadro);
+            break;
+          case 1: // codificacao manchester
+            fluxoBrutoDeBits = CamadaFisicaReceptoraDecodificacaoManchester(quadro);
+            break;
+          case 2: // codificacao manchester diferencial
+            fluxoBrutoDeBits = CamadaFisicaReceptoraDecodificacaoManchesterDiferencial(quadro);
+            break;
         }// fim do switch/case
       } // fim if/else
     } catch (ErroDeVerificacaoException e) {
@@ -81,6 +84,12 @@ public class CamadaFisicaReceptora {
         alert.setHeaderText(e.getTitulo());
         alert.setContentText(e.getMensagem());
         alert.show();
+
+        // Fechar automaticamente após 5 segundos
+        Timeline timeline = new Timeline(new KeyFrame(
+            Duration.seconds(4),
+            ae -> alert.close()));
+        timeline.play();
       });
       return; // Descarta o quadro, nao envia para a camada de Enlace
     }
